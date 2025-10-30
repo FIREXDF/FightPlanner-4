@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Optional version (uses package.json if empty)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
 
 jobs:
   build-and-release:
@@ -30,6 +39,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Use optional version (manual runs)
+        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
+        run: |
+          npm version ${{ inputs.version }} --no-git-tag-version
 
       - name: Build and publish (electron-builder)
         run: |
