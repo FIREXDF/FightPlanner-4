@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FightPlanner Tutorial</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: transparent; /* TRANSPARENT - on voit le bureau */
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+
+        /* Main window - starts TRANSPARENT, becomes WHITE when animation triggers */
+        .tutorial-window {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent; /* TRANSPARENT au début */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 1.2s ease; /* Transition plus douce */
+        }
+
+        /* When animation reaches 2.33s, background becomes white */
+        .tutorial-window.white-bg {
+            background: #ffffff;
+        }
+
+        /* Lottie animation container */
+        #lottie-animation {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Welcome text */
+        .welcome-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 2;
+            opacity: 0;
+            transition: all 1s ease;
+        }
+
+        .welcome-text.show {
+            opacity: 1;
+        }
+
+        .welcome-text.move-up {
+            top: 8%;
+            transition: all 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .welcome-text h1 {
+            font-size: 42px;
+            font-weight: 700;
+            color: #7a9bff;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .welcome-text p {
+            font-size: 16px;
+            color: #6b7280;
+            font-weight: 500;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        /* Screenshot preview - BRUT sans effet, commence EN BAS */
+        .screenshot-preview {
+            position: absolute;
+            top: 100%; /* Commence en bas, hors écran */
+            left: 50%;
+            transform: translate(-50%, 0);
+            width: 94%;
+            max-width: 1430px;
+            opacity: 0;
+            z-index: 1;
+            transition: all 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .screenshot-preview.show {
+            opacity: 1;
+        }
+
+        .screenshot-preview.slide-up {
+            top: 18%; /* Monte vers le haut */
+        }
+
+        .screenshot-preview img {
+            width: 100%;
+            height: auto;
+            display: block;
+            filter: blur(12px); /* FLOU au début */
+            transition: filter 1.5s cubic-bezier(0.16, 1, 0.3, 1); /* Même durée et easing que le slide */
+        }
+
+        .screenshot-preview.clear img {
+            filter: blur(0); /* Devient net pendant le slide */
+        }
+
+        /* Tutorial container with steps - DARK SIMPLE */
+        .tutorial-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: #1a1a1a; /* Dark simple, pas de dégradé */
+            border-radius: 20px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 85vh;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 4;
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .tutorial-container.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Close button */
+        .tutorial-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            z-index: 10;
+            font-size: 14px;
+        }
+
+        .tutorial-close:hover {
+            background: rgba(255, 77, 77, 0.2);
+            border-color: #ff4d4d;
+            transform: rotate(90deg);
+        }
+
+        /* Progress dots - DARK SIMPLE */
+        .tutorial-progress {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            padding: 24px 20px 16px;
+            background: #0d0d0d;
+        }
+
+        .tutorial-progress-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .tutorial-progress-dot:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.2);
+        }
+
+        .tutorial-progress-dot.active {
+            width: 32px;
+            border-radius: 5px;
+            background: #7a9bff; /* Solid color, pas de dégradé */
+            box-shadow: 0 0 12px rgba(122, 155, 255, 0.4);
+        }
+
+        .tutorial-progress-dot.completed {
+            background: #4caf50;
+        }
+
+        /* Tutorial content */
+        .tutorial-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px 40px;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .tutorial-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .tutorial-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .tutorial-content::-webkit-scrollbar-thumb {
+            background: rgba(122, 155, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .tutorial-step {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .tutorial-step-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .tutorial-step-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: #7a9bff; /* Solid color, pas de dégradé */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 8px 24px rgba(122, 155, 255, 0.25);
+        }
+
+        .tutorial-step-icon i {
+            font-size: 28px;
+            color: #fff;
+        }
+
+        .tutorial-step-title {
+            flex: 1;
+        }
+
+        .tutorial-step-title h2 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .tutorial-step-title p {
+            margin: 0;
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .tutorial-step-content {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        /* Navigation buttons - DARK SIMPLE */
+        .tutorial-navigation {
+            padding: 20px 24px;
+            background: #0d0d0d; /* Dark simple */
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .tutorial-nav-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .tutorial-btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .tutorial-btn i {
+            font-size: 14px;
+        }
+
+        .tutorial-btn-primary {
+            background: #7a9bff; /* Solid color, pas de dégradé */
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(122, 155, 255, 0.3);
+        }
+
+        .tutorial-btn-primary:hover {
+            background: #6a8bef;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(122, 155, 255, 0.4);
+        }
+
+        .tutorial-btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tutorial-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .tutorial-btn-ghost {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tutorial-btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="tutorial-window">
+        <!-- Lottie animation (background) -->
+        <div id="lottie-animation"></div>
+
+        <!-- Welcome text (appears after bubble expands to white) -->
+        <div class="welcome-text" id="welcome-text">
+            <h1>Welcome to FightPlanner 4</h1>
+            <p>Your Ultimate Mod Manager</p>
+        </div>
+
+        <!-- Screenshot preview (appears after welcome moves up) -->
+        <div class="screenshot-preview" id="screenshot-preview">
+            <img src="../assets/images/app-screenshot.png" alt="FightPlanner Interface" id="screenshot-img">
+        </div>
+
+        <!-- Tutorial container with steps -->
+        <div class="tutorial-container" id="tutorial-container">
+            <button class="tutorial-close" id="close-btn">
+                <i class="bi bi-x-lg"></i>
+            </button>
+
+            <div class="tutorial-progress" id="progress-dots">
+                <!-- Progress dots will be injected here -->
+            </div>
+
+            <div class="tutorial-content" id="tutorial-content">
+                <!-- Step content will be injected here -->
+            </div>
+
+            <div class="tutorial-navigation">
+                <button class="tutorial-btn tutorial-btn-secondary" id="skip-btn">
+                    Skip Tutorial
+                </button>
+                <div class="tutorial-nav-buttons">
+                    <button class="tutorial-btn tutorial-btn-ghost" id="prev-btn" style="display: none;">
+                        <i class="bi bi-arrow-left"></i> Previous
+                    </button>
+                    <button class="tutorial-btn tutorial-btn-primary" id="next-btn">
+                        Next <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/tutorial-steps.js"></script>
+</body>
+</html>

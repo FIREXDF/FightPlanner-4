@@ -1,0 +1,67 @@
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+/* Tab Transition Animation - Handled by GSAP */
+.tab-content {
+    will-change: opacity, transform, filter;
+}
+
+/* Sidebar button hover animation */
+.sidebar-btn {
+    transition: all 0.3s ease;
+}
+
+/* Action button animations */
+.action-btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.action-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.action-btn:active {
+    transform: translateY(0) scale(1);
+    transition: all 0.1s ease;
+}
+
+/* Input button animations */
+.input-btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.input-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.input-btn:active {
+    transform: translateY(0);
+    transition: all 0.1s ease;
+}
+
+/* Input field focus animation */
+.input-field {
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.input-field:focus {
+    box-shadow: 0 0 0 3px rgba(255, 51, 102, 0.1);
+    transform: scale(1.01);
+}
+
+/* Status bar animation */
+.status-bar {
+    transition: background-color 0.3s ease;
+}
+
+/* Modal animations - Simple and clean */
+/* Overlay has no animation to prevent bugs */
+
+/* Smooth scrollbar */
+* {
+    scroll-behavior: smooth;
+}
+

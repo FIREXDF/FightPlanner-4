@@ -1,0 +1,104 @@
+<!-- Settings Tab Content -->
+<div class="settings-container">
+    <!-- Settings Tabs -->
+    <div class="settings-sidebar">
+        <button class="settings-tab-btn active" data-settings-tab="general">General</button>
+        <button class="settings-tab-btn" data-settings-tab="mods">Paths</button>
+        <button class="settings-tab-btn" data-settings-tab="advanced">Advanced</button>
+    </div>
+
+    <!-- Settings Content -->
+    <div class="settings-content-area">
+        <!-- General Settings -->
+        <div class="settings-tab-content active" id="settings-general">
+            <h2 class="settings-title">General Settings</h2>
+            
+            <div class="settings-section">
+                <label class="settings-label">Animations</label>
+                <div class="animation-selector" id="animation-preference">
+                    <div class="animation-option" data-value="full">
+                        <div class="animation-option-icon">
+                            <i class="bi bi-stars"></i>
+                        </div>
+                        <div class="animation-option-content">
+                            <span class="animation-option-title">Full Animations</span>
+                            <span class="animation-option-desc">All effects enabled</span>
+                        </div>
+                        <div class="animation-option-check">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                    </div>
+                    <div class="animation-option" data-value="reduced">
+                        <div class="animation-option-icon">
+                            <i class="bi bi-dash-circle"></i>
+                        </div>
+                        <div class="animation-option-content">
+                            <span class="animation-option-title">Reduced Animations</span>
+                            <span class="animation-option-desc">Minimal effects</span>
+                        </div>
+                        <div class="animation-option-check">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                    </div>
+                    <div class="animation-option" data-value="none">
+                        <div class="animation-option-icon">
+                            <i class="bi bi-x-circle"></i>
+                        </div>
+                        <div class="animation-option-content">
+                            <span class="animation-option-title">No Animations</span>
+                            <span class="animation-option-desc">Instant transitions</span>
+                        </div>
+                        <div class="animation-option-check">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                    </div>
+                </div>
+                <p class="settings-hint">Control the amount of animations in the interface</p>
+            </div>
+
+            <div class="settings-section">
+                <label class="settings-label">Tutorial</label>
+                <button class="settings-btn-action" id="restart-tutorial-btn">
+                    <i class="bi bi-book"></i>
+                    <div class="settings-btn-action-content">
+                        <span class="settings-btn-action-title">Open Tutorial</span>
+                        <span class="settings-btn-action-desc">Watch the welcome animation again</span>
+                    </div>
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+                <p class="settings-hint">Opens a transparent window with the full tutorial animation</p>
+            </div>
+        </div>
+
+        <!-- Paths Settings -->
+        <div class="settings-tab-content" id="settings-mods">
+            <h2 class="settings-title">Paths Configuration</h2>
+            
+            <div class="settings-section">
+                <label class="settings-label">Mods Folder Path</label>
+                <div class="settings-input-group">
+                    <input type="text" id="mods-folder-path" class="settings-input" placeholder="Select mods folder..." readonly>
+                    <button class="settings-btn" id="browse-mods-folder">Browse</button>
+                </div>
+                <p class="settings-hint">Select the folder containing your mods (usually atmosphere/contents)</p>
+            </div>
+
+            <div class="settings-section">
+                <label class="settings-label">Plugins Folder Path</label>
+                <div class="settings-input-group">
+                    <input type="text" id="plugins-folder-path" class="settings-input" placeholder="Select plugins folder..." readonly>
+                    <button class="settings-btn" id="browse-plugins-folder">Browse</button>
+                </div>
+                <p class="settings-hint">Select the folder containing your .nro plugin files</p>
+            </div>
+        </div>
+
+        <!-- Advanced Settings -->
+        <div class="settings-tab-content" id="settings-advanced">
+            <h2 class="settings-title">Advanced Settings</h2>
+            <div class="settings-section">
+                <p>Advanced settings coming soon...</p>
+            </div>
+        </div>
+    </div>
+</div>

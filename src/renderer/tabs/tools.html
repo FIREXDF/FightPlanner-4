@@ -1,0 +1,102 @@
+<!-- Tools Tab Content -->
+<div class="content-box">
+    <!-- Top Input Fields -->
+    <div class="top-inputs">
+        <input type="text" class="input-field" id="search-mods-input" placeholder="Search mods...">
+        <button class="input-btn short" id="refresh-mods-btn">
+            <i class="bi bi-arrow-clockwise"></i>
+            Refresh Mods
+        </button>
+        <div class="custom-select short" id="category-filter">
+            <div class="custom-select-trigger">
+                <span class="selected-value">All Categories</span>
+                <i class="bi bi-chevron-down"></i>
+            </div>
+            <div class="custom-select-dropdown">
+                <div class="custom-select-option active" data-value="">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                    <span>All Categories</span>
+                </div>
+                <div class="custom-select-option" data-value="Fighter">
+                    <i class="bi bi-person-fill"></i>
+                    <span>Fighter</span>
+                </div>
+                <div class="custom-select-option" data-value="Skins">
+                    <i class="bi bi-palette-fill"></i>
+                    <span>Skins</span>
+                </div>
+                <div class="custom-select-option" data-value="Movesets">
+                    <i class="bi bi-lightning-fill"></i>
+                    <span>Movesets</span>
+                </div>
+                <div class="custom-select-option" data-value="stages">
+                    <i class="bi bi-map-fill"></i>
+                    <span>Stages</span>
+                </div>
+                <div class="custom-select-option" data-value="effects">
+                    <i class="bi bi-stars"></i>
+                    <span>Effects</span>
+                </div>
+                <div class="custom-select-option" data-value="final smash">
+                    <i class="bi bi-star-fill"></i>
+                    <span>Final Smash</span>
+                </div>
+                <div class="custom-select-option" data-value="UI">
+                    <i class="bi bi-window"></i>
+                    <span>UI</span>
+                </div>
+                <div class="custom-select-option" data-value="Param">
+                    <i class="bi bi-sliders"></i>
+                    <span>Param</span>
+                </div>
+                <div class="custom-select-option" data-value="audio">
+                    <i class="bi bi-music-note-beamed"></i>
+                    <span>Audio</span>
+                </div>
+                <div class="custom-select-option" data-value="Other/misc">
+                    <i class="bi bi-three-dots"></i>
+                    <span>Other/Misc</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Large Content Area -->
+    <div class="large-content" id="mod-list">
+        <!-- Mods will be loaded dynamically -->
+    </div>
+</div>
+
+<!-- Resize Handle -->
+<div class="resize-handle" id="resize-handle"></div>
+
+<!-- Right Panel (Tools Only) -->
+<div class="right-panel" id="right-panel">
+    <div class="preview-area">
+        <!-- Preview content -->
+    </div>
+    
+    <!-- Mod Info Area -->
+    <div class="mod-info-area">
+        <h3 class="mod-info-title">Details</h3>
+        <div class="mod-info-content" id="mod-info-content">
+            <p class="mod-info-placeholder">Select a mod to view details</p>
+        </div>
+    </div>
+    
+    <div class="action-buttons">
+        <button class="action-btn" title="Add">
+            <i class="bi bi-plus-circle-fill"></i>
+        </button>
+        <button class="action-btn" title="Import">
+            <i class="bi bi-file-zip-fill"></i>
+        </button>
+        <button class="action-btn" id="open-folder-btn" title="Open Folder">
+            <i class="bi bi-folder-fill"></i>
+        </button>
+        <button class="action-btn" title="Play">
+            <i class="bi bi-play-fill"></i>
+        </button>
+    </div>
+</div>
+

@@ -1,0 +1,81 @@
+{
+  "name": "fightplanner",
+  "version": "4.0.0",
+  "description": "FightPlanner 4.0 - Your Ultimate Mod Manager",
+  "main": "src/main/main.js",
+  "author": "Shattered Chaos",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build:test": "electron-builder --win portable --config",
+    "build:win": "electron-builder --win --config",
+    "build:all": "electron-builder -wml --config",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "adm-zip": "^0.5.10"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.shatteredchaos.fightplanner",
+    "productName": "FightPlanner",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "protocols": [
+      {
+        "name": "FightPlanner Protocol",
+        "role": "Viewer",
+        "schemes": [
+          "fightplanner"
+        ]
+      }
+    ],
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "publisherName": "FightPlanner Team"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FightPlanner",
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-Portable.${ext}"
+    },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "build/icon.png",
+      "category": "Utility"
+    }
+  }
+}
