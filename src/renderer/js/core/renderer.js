@@ -200,3 +200,24 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Dev shortcut: Ctrl/Cmd + Alt + R -> reset electron-store
+document.addEventListener('keydown', async (e) => {
+    const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+    if (isCtrlOrCmd && e.altKey && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault();
+        try {
+            if (window.electronAPI && window.electronAPI.store && window.electronAPI.store.clear) {
+                await window.electronAPI.store.clear();
+                if (window.toastManager) {
+                    window.toastManager.success('Electron Store reset');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to reset store:', err);
+            if (window.toastManager) {
+                window.toastManager.error('Failed to reset store');
+            }
+        }
+    }
+});
+

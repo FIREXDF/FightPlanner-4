@@ -3,7 +3,10 @@
   "version": "4.0.0",
   "description": "FightPlanner 4.0 - Your Ultimate Mod Manager",
   "main": "src/main/main.js",
-  "author": "Shattered Chaos",
+  "author": {
+    "name": "Shattered Chaos",
+    "email": "noreply@fightplanner.app"
+  },
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -75,7 +78,8 @@
     "linux": {
       "target": ["AppImage", "deb"],
       "icon": "build/icon.png",
-      "category": "Utility"
+      "category": "Utility",
+      "maintainer": "Shattered Chaos <noreply@fightplanner.app>"
     }
   }
 }

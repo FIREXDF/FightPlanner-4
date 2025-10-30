@@ -19,6 +19,7 @@ class ProtocolHandler {
      * Register the fightplanner:// protocol
      */
     static registerProtocol() {
+        // Windows: explicit registration + registry
         if (process.platform === 'win32') {
             // Check if running in development mode (npm start / electron .)
             if (process.defaultApp) {
@@ -34,6 +35,20 @@ class ProtocolHandler {
             
             // Also manually register in Windows Registry for better reliability
             this.registerProtocolInRegistry();
+        } else if (process.platform === 'darwin' || process.platform === 'linux') {
+            // In production, electron-builder registers using package.json build.protocols
+            // Here we also register in dev so deep links work during development
+            try {
+                if (process.defaultApp && process.argv.length >= 2) {
+                    app.setAsDefaultProtocolClient('fightplanner', process.execPath, [path.resolve(process.argv[1])]);
+                    console.log('✓ FightPlanner protocol registered (dev mode, ' + process.platform + ')');
+                } else {
+                    app.setAsDefaultProtocolClient('fightplanner');
+                    console.log('✓ FightPlanner protocol ensured (' + process.platform + ')');
+                }
+            } catch (e) {
+                console.warn('Protocol registration skipped (' + process.platform + '):', e.message);
+            }
         }
     }
 

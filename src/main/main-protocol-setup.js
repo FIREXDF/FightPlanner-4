@@ -7,10 +7,10 @@ const ProtocolHandler = require('./protocol-handler');
 let protocolHandler = null;
 let mainWindow = null;
 
-// Register protocol BEFORE app is ready
-if (process.platform === 'win32') {
-    ProtocolHandler.registerProtocol();
-}
+// Register protocol BEFORE app is ready (platform-aware)
+// Windows: we register explicitly; macOS/Linux: electron-builder handles in production
+// but we still register in dev so deep links work during development
+ProtocolHandler.registerProtocol();
 
 /**
  * Initialize protocol handling
@@ -24,19 +24,15 @@ function initializeProtocol(window) {
     
     console.log('🔗 Protocol handler initialized');
     
-    // Handle protocol URL on app start (Windows)
-    if (process.platform === 'win32') {
-        // Get the URL from command line arguments
+    // Handle protocol URL on app start
+    // Windows & Linux: URL is passed in process.argv
+    if (process.platform === 'win32' || process.platform === 'linux') {
         const args = process.argv.slice(1);
-        const protocolUrl = args.find(arg => arg.startsWith('fightplanner:'));
-        
+        const protocolUrl = args.find(arg => typeof arg === 'string' && arg.startsWith('fightplanner:'));
         if (protocolUrl) {
-            console.log('🚀 Opening with protocol URL:', protocolUrl);
-            // Handle after window is ready
+            console.log('🚀 Opening with protocol URL (argv):', protocolUrl);
             window.webContents.once('did-finish-load', () => {
-                setTimeout(() => {
-                    protocolHandler.handleDeepLink(protocolUrl);
-                }, 1000);
+                setTimeout(() => protocolHandler.handleDeepLink(protocolUrl), 300);
             });
         }
     }
@@ -56,12 +52,12 @@ function initializeProtocol(window) {
         }
     });
     
-    // Handle second instance (Windows - when app is already running)
-    app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Handle second instance (Windows/Linux) - when app is already running
+    app.on('second-instance', (event, commandLine) => {
         console.log('🔗 Second instance launched with:', commandLine);
         
         // Find protocol URL in command line
-        const protocolUrl = commandLine.find(arg => arg.startsWith('fightplanner:'));
+        const protocolUrl = commandLine.find(arg => typeof arg === 'string' && arg.startsWith('fightplanner:'));
         
         if (protocolUrl && protocolHandler) {
             console.log('🚀 Processing protocol URL from second instance:', protocolUrl);
