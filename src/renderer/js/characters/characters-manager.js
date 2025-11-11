@@ -1,394 +1,422 @@
-// Characters Manager
-// Scans mods and displays characters with their associated mods
+
 
 class CharactersManager {
-    constructor() {
-        this.characters = new Map(); // Map<characterId, {info, mods[]}>
-        this.allCharacters = []; // Array for filtering
-        this.searchQuery = '';
-        this.initialized = false;
-        console.log('Characters Manager created');
-    }
-
-    async initialize() {
-        if (this.initialized) {
-            console.log('Characters already initialized, skipping refresh.');
-            return;
-        }
-        
-        console.log('Initializing Characters Manager...');
-        await this.scanMods();
-        this.setupEventListeners();
-        this.renderCharacters();
-        this.initialized = true;
-    }
-
-    setupEventListeners() {
-        // Search input
-        const searchInput = document.getElementById('characters-search');
-        if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                this.searchQuery = e.target.value.toLowerCase();
-                this.filterCharacters();
-            });
-        }
-    }
-
-    filterCharacters() {
-        if (!this.searchQuery) {
-            // Show all characters
-            this.renderCharacters();
-            return;
-        }
-
-        // Filter characters by name
-        const filtered = this.allCharacters.filter(char => 
-            char.info.name.toLowerCase().includes(this.searchQuery)
-        );
-
-        this.renderFilteredCharacters(filtered);
-    }
-
-    renderFilteredCharacters(characters) {
-        const container = document.getElementById('characters-grid');
-        if (!container) return;
-
-        if (characters.length === 0) {
-            container.innerHTML = `
-                <div class="characters-empty-state">
-                    <i class="bi bi-search"></i>
-                    <h3>No characters found</h3>
-                    <p>Try a different search term</p>
-                </div>
-            `;
-            this.updateCharacterCount(0);
-            return;
-        }
-
-        container.innerHTML = '';
-        characters.forEach(char => {
-            const card = this.createCharacterCard(char);
-            container.appendChild(card);
-        });
-
-        this.updateCharacterCount(characters.length);
-    }
-
-    async scanMods() {
-        console.log('Scanning mods for character data...');
-        
-        // Get mods path from settings
-        if (!window.settingsManager || !window.settingsManager.hasModsPath()) {
-            console.warn('No mods path configured');
-            this.renderEmptyState();
-            return;
-        }
-
-        const modsPath = window.settingsManager.getModsPath();
-        if (!modsPath) {
-            console.warn('Mods path is null');
-            this.renderEmptyState();
-            return;
-        }
-
-        // Get all mods
-        if (!window.electronAPI || !window.electronAPI.readModsFolder) {
-            console.error('Electron API not available');
-            return;
-        }
-
-        try {
-            const result = await window.electronAPI.readModsFolder(modsPath);
-            
-            if (result.error) {
-                console.error('Error reading mods:', result.error);
-                return;
-            }
-
-            // Clear previous data
-            this.characters.clear();
-
-            // Scan active mods
-            for (const mod of result.activeMods) {
-                await this.scanModForCharacters(mod, 'active');
-            }
-
-            // Scan disabled mods
-            for (const mod of result.disabledMods) {
-                await this.scanModForCharacters(mod, 'disabled');
-            }
-
-            console.log(`Found ${this.characters.size} characters with mods`);
-        } catch (error) {
-            console.error('Failed to scan mods:', error);
-        }
-    }
-
-    async scanModForCharacters(mod, status) {
-        if (!window.electronAPI || !window.electronAPI.scanModForFighters) {
-            // If API not available, we'll create it
-            return;
-        }
-
-        try {
-            const fighters = await window.electronAPI.scanModForFighters(mod.path);
-            
-            if (fighters && fighters.length > 0) {
-                fighters.forEach(rawFighterId => {
-                    // Resolve folder name to canonical name (handles aliases)
-                    const fighterId = window.resolveFolderName ? 
-                        window.resolveFolderName(rawFighterId) : 
-                        rawFighterId.toLowerCase();
-                    
-                    if (!this.characters.has(fighterId)) {
-                        const charInfo = window.SSBU_CHARACTERS[fighterId];
-                        if (charInfo) {
-                            this.characters.set(fighterId, {
-                                id: fighterId,
-                                info: charInfo,
-                                mods: []
-                            });
-                        } else {
-                            console.warn(`Unknown fighter: ${rawFighterId} (resolved to: ${fighterId})`);
-                        }
-                    }
-
-                    const char = this.characters.get(fighterId);
-                    if (char) {
-                        char.mods.push({
-                            name: mod.name,
-                            path: mod.path,
-                            status: status
-                        });
-                    }
-                });
-            }
-        } catch (error) {
-            console.error(`Error scanning mod ${mod.name}:`, error);
-        }
-    }
-
-    renderCharacters() {
-        const container = document.getElementById('characters-grid');
-        if (!container) {
-            console.warn('Characters grid container not found');
-            return;
-        }
-
-        if (this.characters.size === 0) {
-            this.renderEmptyState();
-            return;
-        }
-
-        container.innerHTML = '';
-
-        // Sort characters by number
-        this.allCharacters = Array.from(this.characters.values()).sort((a, b) => {
-            const numA = parseFloat(a.info.number.replace('ε', '.5'));
-            const numB = parseFloat(b.info.number.replace('ε', '.5'));
-            return numA - numB;
-        });
-
-        this.allCharacters.forEach(char => {
-            const card = this.createCharacterCard(char);
-            container.appendChild(card);
-        });
-
-        this.updateCharacterCount(this.allCharacters.length);
-    }
-
-    updateCharacterCount(count) {
-        const countEl = document.getElementById('characters-count');
-        if (countEl) {
-            countEl.textContent = `${count} character${count !== 1 ? 's' : ''}`;
-        }
-    }
-
-    createCharacterCard(char) {
-        const card = document.createElement('div');
-        card.className = 'character-card';
-        card.dataset.characterId = char.id;
-
-        // Character image
-        const imageUrl = window.CHARACTER_IMAGES[char.id] || 'https://www.smashbros.com/assets_v2/img/fighter/mario/main.png';
-        
-        card.innerHTML = `
-            <div class="character-card-header">
-                <img src="${imageUrl}" alt="${char.info.name}" class="character-image" 
-                     onerror="this.src='https://via.placeholder.com/200x200?text=${encodeURIComponent(char.info.name)}'">
-                <div class="character-overlay">
-                    <span class="character-number">#${char.info.number}</span>
-                </div>
-            </div>
-            <div class="character-card-body">
-                <h3 class="character-name">${this.escapeHtml(char.info.name)}</h3>
-                <div class="character-mod-count">
-                    <i class="bi bi-file-earmark-code"></i>
-                    <span>${char.mods.length} mod${char.mods.length > 1 ? 's' : ''}</span>
-                </div>
-                <div class="character-mods-list">
-                    ${char.mods.map(mod => `
-                        <div class="character-mod-item ${mod.status}" data-mod-path="${this.escapeHtml(mod.path)}">
-                            <span class="mod-status-dot"></span>
-                            <span class="mod-name">${this.escapeHtml(mod.name)}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-
-        // Add click handlers to mod items
-        const modItems = card.querySelectorAll('.character-mod-item');
-        modItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const modPath = item.dataset.modPath;
-                this.openModInToolsTab(modPath);
-            });
-        });
-
-        // Card click shows all mods
-        card.addEventListener('click', () => {
-            this.showCharacterDetails(char);
-        });
-
-        return card;
-    }
-
-    showCharacterDetails(char) {
-        // Create modal to show all mods for this character
-        const modal = document.createElement('div');
-        modal.className = 'character-modal-overlay';
-        modal.innerHTML = `
-            <div class="character-modal">
-                <div class="character-modal-header">
-                    <h2>${this.escapeHtml(char.info.name)}</h2>
-                    <button class="character-modal-close">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                </div>
-                <div class="character-modal-body">
-                    <p class="character-modal-count">${char.mods.length} mod${char.mods.length > 1 ? 's' : ''} for this character</p>
-                    <div class="character-modal-mods">
-                        ${char.mods.map(mod => `
-                            <div class="character-modal-mod-item ${mod.status}" data-mod-path="${this.escapeHtml(mod.path)}">
-                                <span class="mod-status-indicator ${mod.status}"></span>
-                                <span class="mod-name">${this.escapeHtml(mod.name)}</span>
-                                <i class="bi bi-arrow-right-circle"></i>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-        // Close button
-        const closeBtn = modal.querySelector('.character-modal-close');
-        closeBtn.addEventListener('click', () => {
-            modal.remove();
-        });
-
-        // Click overlay to close
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
-
-        // Mod item clicks
-        const modItems = modal.querySelectorAll('.character-modal-mod-item');
-        modItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const modPath = item.dataset.modPath;
-                modal.remove();
-                this.openModInToolsTab(modPath);
-            });
-        });
-    }
-
-    openModInToolsTab(modPath) {
-        console.log('Opening mod in tools tab:', modPath);
-        
-        // Switch to tools tab
-        const toolsBtn = document.querySelector('[data-tab="tools"]');
-        if (toolsBtn) {
-            toolsBtn.click();
-        }
-
-        // Wait for tab to load, then select the mod and scroll to it
-        setTimeout(() => {
-            if (window.modManager && window.modManager.mods) {
-                const mod = window.modManager.mods.find(m => m.folderPath === modPath);
-                if (mod) {
-                    window.modManager.selectMod(mod.id);
-                    
-                    // Scroll to the mod in the list
-                    setTimeout(() => {
-                        const modElement = document.querySelector(`.mod-item[data-mod-id="${mod.id}"]`);
-                        if (modElement) {
-                            modElement.scrollIntoView({ 
-                                behavior: 'smooth', 
-                                block: 'center' 
-                            });
-                            
-                            // Highlight effect
-                            modElement.style.animation = 'highlightMod 1.5s ease';
-                            setTimeout(() => {
-                                modElement.style.animation = '';
-                            }, 1500);
-                        }
-                    }, 100);
-                }
-            }
-        }, 300);
-    }
-
-    renderEmptyState() {
-        const container = document.getElementById('characters-grid');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="characters-empty-state">
-                <i class="bi bi-people-fill"></i>
-                <h3>No Character Mods Found</h3>
-                <p>Configure your mods folder in Settings to see characters with mods.</p>
-            </div>
-        `;
-    }
-
-    async refresh() {
-        console.log('Refreshing characters...');
-        this.showLoading();
-        this.characters.clear();
-        await this.scanMods();
-        this.renderCharacters();
-    }
-
-    showLoading() {
-        const container = document.getElementById('characters-grid');
-        if (container) {
-            container.innerHTML = `
-                <div class="characters-loading">
-                    <i class="bi bi-hourglass-split"></i>
-                    <p>Loading characters...</p>
-                </div>
-            `;
-        }
-        this.updateCharacterCount(0);
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+constructor() {
+this.characters = new Map();
+this.allCharacters = [];
+this.searchQuery = '';
+this.initialized = false;
+console.log('Characters Manager created');
 }
 
-// Create global instance
+async initialize() {
+if (this.initialized) {
+console.log('Characters already initialized, skipping refresh.');
+return;
+}
+
+console.log('Initializing Characters Manager...');
+await this.scanMods();
+this.setupEventListeners();
+this.renderCharacters();
+this.initialized = true;
+}
+
+setupEventListeners() {
+
+const searchInput = document.getElementById('characters-search');
+if (searchInput) {
+searchInput.addEventListener('input', (e) => {
+this.searchQuery = e.target.value.toLowerCase();
+this.filterCharacters();
+});
+}
+}
+
+filterCharacters() {
+if (!this.searchQuery) {
+
+this.renderCharacters();
+return;
+}
+
+const filtered = this.allCharacters.filter(char =>
+char.info.name.toLowerCase().includes(this.searchQuery)
+);
+
+this.renderFilteredCharacters(filtered);
+}
+
+renderFilteredCharacters(characters) {
+const container = document.getElementById('characters-grid');
+if (!container) return;
+
+if (characters.length === 0) {
+container.innerHTML = `
+<div class="characters-empty-state">
+<i class="bi bi-search"></i>
+<h3>No characters found</h3>
+<p>Try a different search term</p>
+</div>
+`;
+this.updateCharacterCount(0);
+return;
+}
+
+container.innerHTML = '';
+characters.forEach(char => {
+const card = this.createCharacterCard(char);
+container.appendChild(card);
+});
+
+this.updateCharacterCount(characters.length);
+}
+
+async scanMods() {
+console.log('Scanning mods for character data...');
+
+if (!window.settingsManager || !window.settingsManager.hasModsPath()) {
+console.warn('No mods path configured');
+this.renderEmptyState();
+return;
+}
+
+const modsPath = window.settingsManager.getModsPath();
+if (!modsPath) {
+console.warn('Mods path is null');
+this.renderEmptyState();
+return;
+}
+
+if (!window.electronAPI || !window.electronAPI.readModsFolder) {
+console.error('Electron API not available');
+return;
+}
+
+try {
+const result = await window.electronAPI.readModsFolder(modsPath);
+
+if (result.error) {
+console.error('Error reading mods:', result.error);
+return;
+}
+
+this.characters.clear();
+
+for (const mod of result.activeMods) {
+await this.scanModForCharacters(mod, 'active');
+}
+
+for (const mod of result.disabledMods) {
+await this.scanModForCharacters(mod, 'disabled');
+}
+
+console.log(`Found ${this.characters.size} characters with mods`);
+} catch (error) {
+console.error('Failed to scan mods:', error);
+}
+}
+
+async scanModForCharacters(mod, status) {
+if (!window.electronAPI || !window.electronAPI.scanModForFighters) {
+
+return;
+}
+
+try {
+const fighters = await window.electronAPI.scanModForFighters(mod.path);
+
+if (fighters && fighters.length > 0) {
+fighters.forEach(rawFighterId => {
+
+const fighterId = window.resolveFolderName ?
+window.resolveFolderName(rawFighterId) :
+rawFighterId.toLowerCase();
+
+if (!this.characters.has(fighterId)) {
+const charInfo = window.SSBU_CHARACTERS[fighterId];
+if (charInfo) {
+this.characters.set(fighterId, {
+id: fighterId,
+info: charInfo,
+mods: []
+});
+} else {
+console.warn(`Unknown fighter: ${rawFighterId} (resolved to: ${fighterId})`);
+}
+}
+
+const char = this.characters.get(fighterId);
+if (char) {
+char.mods.push({
+name: mod.name,
+path: mod.path,
+status: status
+});
+}
+});
+}
+} catch (error) {
+console.error(`Error scanning mod ${mod.name}:`, error);
+}
+}
+
+renderCharacters() {
+const container = document.getElementById('characters-grid');
+if (!container) {
+console.warn('Characters grid container not found');
+return;
+}
+
+if (this.characters.size === 0) {
+this.renderEmptyState();
+return;
+}
+
+container.innerHTML = '';
+
+this.allCharacters = Array.from(this.characters.values()).sort((a, b) => {
+const numA = parseFloat(a.info.number.replace('ε', '.5'));
+const numB = parseFloat(b.info.number.replace('ε', '.5'));
+return numA - numB;
+});
+
+this.allCharacters.forEach(char => {
+const card = this.createCharacterCard(char);
+container.appendChild(card);
+});
+
+this.updateCharacterCount(this.allCharacters.length);
+}
+
+updateCharacterCount(count) {
+const countEl = document.getElementById('characters-count');
+if (countEl) {
+countEl.textContent = `${count} character${count !== 1 ? 's' : ''}`;
+}
+}
+
+createCharacterCard(char) {
+const card = document.createElement('div');
+card.className = 'character-card';
+card.dataset.characterId = char.id;
+
+const imageUrl = window.CHARACTER_IMAGES[char.id] || 'https://www.smashbros.com/assets_v2/img/fighter/mario/main.png';
+const escapedName = this.escapeHtml(char.info.name);
+
+card.innerHTML = `
+<div class="character-card-header">
+<img src="${imageUrl}" alt="${escapedName}" class="character-image"
+onerror="this.style.display='none'; this.nextElementSibling.classList.add('show-placeholder');">
+<div class="character-image-placeholder">
+<i class="bi bi-person-circle"></i>
+<span class="character-placeholder-text">${escapedName}</span>
+</div>
+<div class="character-overlay">
+<span class="character-number">#${char.info.number}</span>
+</div>
+</div>
+<div class="character-card-body">
+<h3 class="character-name">${this.escapeHtml(char.info.name)}</h3>
+<div class="character-mod-count">
+<i class="bi bi-file-earmark-code"></i>
+<span>${char.mods.length} mod${char.mods.length > 1 ? 's' : ''}</span>
+</div>
+<div class="character-mods-list">
+${char.mods.map(mod => `
+<div class="character-mod-item ${mod.status}" data-mod-path="${this.escapeHtml(mod.path)}">
+<span class="mod-status-dot"></span>
+<span class="mod-name">${this.escapeHtml(mod.name)}</span>
+</div>
+`).join('')}
+</div>
+</div>
+`;
+
+const modItems = card.querySelectorAll('.character-mod-item');
+modItems.forEach(item => {
+item.addEventListener('click', (e) => {
+e.stopPropagation();
+const modPath = item.dataset.modPath;
+this.openModInToolsTab(modPath);
+});
+});
+
+card.addEventListener('click', () => {
+this.showCharacterDetails(char);
+});
+
+return card;
+}
+
+showCharacterDetails(char) {
+const existingModal = document.querySelector('.character-modal-overlay');
+if (existingModal) {
+existingModal.remove();
+}
+
+const modal = document.createElement('div');
+modal.className = 'character-modal-overlay';
+modal.innerHTML = `
+<div class="character-modal">
+<div class="character-modal-header">
+<h2>${this.escapeHtml(char.info.name)}</h2>
+<button class="character-modal-close">
+<i class="bi bi-x-lg"></i>
+</button>
+</div>
+<div class="character-modal-body">
+<p class="character-modal-count">${char.mods.length} mod${char.mods.length > 1 ? 's' : ''} for this character</p>
+<div class="character-modal-mods">
+${char.mods.map(mod => `
+<div class="character-modal-mod-item ${mod.status}" data-mod-path="${this.escapeHtml(mod.path)}">
+<span class="mod-status-indicator ${mod.status}"></span>
+<span class="mod-name">${this.escapeHtml(mod.name)}</span>
+<i class="bi bi-arrow-right-circle"></i>
+</div>
+`).join('')}
+</div>
+</div>
+</div>
+`;
+
+document.body.appendChild(modal);
+
+const isNoAnimations = document.body.classList.contains('no-animations');
+if (isNoAnimations) {
+const overlay = modal;
+const modalContent = modal.querySelector('.character-modal');
+if (overlay) {
+overlay.style.opacity = '1';
+overlay.style.animation = 'none';
+overlay.style.display = 'flex';
+overlay.style.alignItems = 'center';
+overlay.style.justifyContent = 'center';
+}
+if (modalContent) {
+modalContent.style.opacity = '1';
+modalContent.style.transform = 'scale(1) translateY(-50%) translateX(-50%)';
+modalContent.style.animation = 'none';
+modalContent.style.position = 'absolute';
+modalContent.style.left = '50%';
+modalContent.style.top = '50%';
+modalContent.style.margin = '0';
+}
+}
+
+const closeBtn = modal.querySelector('.character-modal-close');
+closeBtn.addEventListener('click', (e) => {
+e.stopPropagation();
+modal.remove();
+});
+
+modal.addEventListener('click', (e) => {
+if (e.target === modal) {
+modal.remove();
+}
+});
+
+const modalContent = modal.querySelector('.character-modal');
+if (modalContent) {
+modalContent.addEventListener('click', (e) => {
+e.stopPropagation();
+});
+}
+
+const modItems = modal.querySelectorAll('.character-modal-mod-item');
+modItems.forEach(item => {
+item.addEventListener('click', () => {
+const modPath = item.dataset.modPath;
+modal.remove();
+this.openModInToolsTab(modPath);
+});
+});
+
+const escapeHandler = (e) => {
+if (e.key === 'Escape') {
+modal.remove();
+document.removeEventListener('keydown', escapeHandler);
+}
+};
+document.addEventListener('keydown', escapeHandler);
+}
+
+openModInToolsTab(modPath) {
+console.log('Opening mod in tools tab:', modPath);
+
+const toolsBtn = document.querySelector('[data-tab="tools"]');
+if (toolsBtn) {
+toolsBtn.click();
+}
+
+setTimeout(() => {
+if (window.modManager && window.modManager.mods) {
+const mod = window.modManager.mods.find(m => m.folderPath === modPath);
+if (mod) {
+window.modManager.selectMod(mod.id);
+
+setTimeout(() => {
+const modElement = document.querySelector(`.mod-item[data-mod-id="${mod.id}"]`);
+if (modElement) {
+modElement.scrollIntoView({
+behavior: 'smooth',
+block: 'center'
+});
+
+modElement.style.animation = 'highlightMod 1.5s ease';
+setTimeout(() => {
+modElement.style.animation = '';
+}, 1500);
+}
+}, 100);
+}
+}
+}, 300);
+}
+
+renderEmptyState() {
+const container = document.getElementById('characters-grid');
+if (!container) return;
+
+container.innerHTML = `
+<div class="characters-empty-state">
+<i class="bi bi-people-fill"></i>
+<h3>No Character Mods Found</h3>
+<p>Configure your mods folder in Settings to see characters with mods.</p>
+</div>
+`;
+}
+
+async refresh() {
+console.log('Refreshing characters...');
+this.showLoading();
+this.characters.clear();
+await this.scanMods();
+this.renderCharacters();
+}
+
+showLoading() {
+const container = document.getElementById('characters-grid');
+if (container) {
+container.innerHTML = `
+<div class="characters-loading">
+<i class="bi bi-hourglass-split"></i>
+<p>Loading characters...</p>
+</div>
+`;
+}
+this.updateCharacterCount(0);
+}
+
+escapeHtml(text) {
+const div = document.createElement('div');
+div.textContent = text;
+return div.innerHTML;
+}
+}
+
 if (typeof window !== 'undefined') {
-    window.charactersManager = new CharactersManager();
-    console.log('Characters Manager initialized globally');
+window.charactersManager = new CharactersManager();
+console.log('Characters Manager initialized globally');
 }
 

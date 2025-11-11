@@ -16,8 +16,9 @@
     "dist": "electron-builder"
   },
   "dependencies": {
-    "electron-store": "^8.2.0",
-    "adm-zip": "^0.5.10"
+    "adm-zip": "^0.5.10",
+    "basic-ftp": "^5.0.5",
+    "electron-store": "^8.2.0"
   },
   "devDependencies": {
     "electron": "^39.0.0",
@@ -48,11 +49,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico",
@@ -71,12 +76,18 @@
       "artifactName": "${productName}-${version}-Portable.${ext}"
     },
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "build/icon.icns",
       "category": "public.app-category.utilities"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "build/icon.png",
       "category": "Utility",
       "maintainer": "Shattered Chaos <noreply@fightplanner.app>"

@@ -36,3 +36,18 @@ exec('reg query HKCU\\Software\\Classes\\fightplanner', (error, stdout, stderr) 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

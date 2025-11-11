@@ -1,109 +1,107 @@
 class ResizeHandler {
-    constructor() {
+  constructor() {
+    this.isResizing = false;
+    this.initResize();
+  }
+
+  initResize() {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () =>
+        this.setupResizeHandlers()
+      );
+    } else {
+      this.setupResizeHandlers();
+    }
+  }
+
+  async loadSavedWidth() {
+    try {
+      const saved = await window.electronAPI.store.get("panelWidth");
+      if (saved) {
+        return saved;
+      }
+    } catch (error) {
+      console.error("Failed to load panel width:", error);
+    }
+    return null;
+  }
+
+  async saveWidth(width) {
+    try {
+      await window.electronAPI.store.set("panelWidth", width);
+    } catch (error) {
+      console.error("Failed to save panel width:", error);
+    }
+  }
+
+  async setupResizeHandlers() {
+    const resizeHandle = document.getElementById("resize-handle");
+    const rightPanel = document.getElementById("right-panel");
+
+    if (resizeHandle && rightPanel) {
+      await this.setupResizeForPanel(resizeHandle, rightPanel);
+    }
+
+    const resizeHandlePlugins = document.getElementById(
+      "resize-handle-plugins"
+    );
+    const rightPanelPlugins = document.getElementById("right-panel-plugins");
+
+    if (resizeHandlePlugins && rightPanelPlugins) {
+      await this.setupResizeForPanel(resizeHandlePlugins, rightPanelPlugins);
+    }
+  }
+
+  async setupResizeForPanel(resizeHandle, rightPanel) {
+    const savedWidth = await this.loadSavedWidth();
+    if (savedWidth) {
+      rightPanel.style.width = `${savedWidth}px`;
+    }
+
+    resizeHandle.addEventListener("mousedown", (e) => {
+      this.isResizing = true;
+      this.currentPanel = rightPanel;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      e.preventDefault();
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!this.isResizing || !this.currentPanel) return;
+
+      const containerWidth = this.currentPanel.parentElement.offsetWidth;
+      const mouseX = e.clientX;
+
+      const newWidth =
+        containerWidth -
+        mouseX +
+        this.currentPanel.parentElement.getBoundingClientRect().left;
+
+      const minWidth = 250;
+      const maxWidth = 600;
+      const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+
+      this.currentPanel.style.width = `${constrainedWidth}px`;
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (this.isResizing && this.currentPanel) {
         this.isResizing = false;
-        this.initResize();
-    }
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
 
-    initResize() {
-        // Wait for DOM
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.setupResizeHandlers());
-        } else {
-            this.setupResizeHandlers();
-        }
-    }
-
-    async loadSavedWidth() {
-        try {
-            const saved = await window.electronAPI.store.get('panelWidth');
-            if (saved) {
-                return saved;
-            }
-        } catch (error) {
-            console.error('Failed to load panel width:', error);
-        }
-        return null;
-    }
-
-    async saveWidth(width) {
-        try {
-            await window.electronAPI.store.set('panelWidth', width);
-        } catch (error) {
-            console.error('Failed to save panel width:', error);
-        }
-    }
-
-    async setupResizeHandlers() {
-        // Setup for tools tab
-        const resizeHandle = document.getElementById('resize-handle');
-        const rightPanel = document.getElementById('right-panel');
-
-        if (resizeHandle && rightPanel) {
-            await this.setupResizeForPanel(resizeHandle, rightPanel);
+        const currentWidth = parseInt(this.currentPanel.style.width, 10);
+        if (!isNaN(currentWidth)) {
+          this.saveWidth(currentWidth);
         }
 
-        // Setup for plugins tab
-        const resizeHandlePlugins = document.getElementById('resize-handle-plugins');
-        const rightPanelPlugins = document.getElementById('right-panel-plugins');
-
-        if (resizeHandlePlugins && rightPanelPlugins) {
-            await this.setupResizeForPanel(resizeHandlePlugins, rightPanelPlugins);
-        }
-    }
-
-    async setupResizeForPanel(resizeHandle, rightPanel) {
-        // Load saved width
-        const savedWidth = await this.loadSavedWidth();
-        if (savedWidth) {
-            rightPanel.style.width = `${savedWidth}px`;
-        }
-
-        resizeHandle.addEventListener('mousedown', (e) => {
-            this.isResizing = true;
-            this.currentPanel = rightPanel;
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-            e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!this.isResizing || !this.currentPanel) return;
-
-            const containerWidth = this.currentPanel.parentElement.offsetWidth;
-            const mouseX = e.clientX;
-            
-            // Calculate new width based on mouse position from the right edge
-            const newWidth = containerWidth - mouseX + this.currentPanel.parentElement.getBoundingClientRect().left;
-            
-            // Apply constraints
-            const minWidth = 250;
-            const maxWidth = 600;
-            const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
-            
-            this.currentPanel.style.width = `${constrainedWidth}px`;
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (this.isResizing && this.currentPanel) {
-                this.isResizing = false;
-                document.body.style.cursor = '';
-                document.body.style.userSelect = '';
-                
-                // Save the new width
-                const currentWidth = parseInt(this.currentPanel.style.width, 10);
-                if (!isNaN(currentWidth)) {
-                    this.saveWidth(currentWidth);
-                }
-                
-                this.currentPanel = null;
-            }
-        });
-    }
+        this.currentPanel = null;
+      }
+    });
+  }
 }
 
-// Initialize
-if (typeof window !== 'undefined') {
-    window.resizeHandler = new ResizeHandler();
-    console.log('Resize Handler initialized');
+if (typeof window !== "undefined") {
+  window.resizeHandler = new ResizeHandler();
+  console.log("Resize Handler initialized");
 }
-

@@ -5,6 +5,7 @@
         <button class="settings-tab-btn active" data-settings-tab="general">General</button>
         <button class="settings-tab-btn" data-settings-tab="mods">Paths</button>
         <button class="settings-tab-btn" data-settings-tab="advanced">Advanced</button>
+        <button class="settings-tab-btn" data-settings-tab="logs">Logs</button>
     </div>
 
     <!-- Settings Content -->
@@ -96,8 +97,88 @@
         <!-- Advanced Settings -->
         <div class="settings-tab-content" id="settings-advanced">
             <h2 class="settings-title">Advanced Settings</h2>
+            
             <div class="settings-section">
-                <p>Advanced settings coming soon...</p>
+                <label class="settings-label">Switch Connection</label>
+                <div class="settings-input-group">
+                    <input type="text" id="switch-ip" class="settings-input" placeholder="192.168.1.100">
+                    <label class="settings-label" style="margin: 0 10px;">:</label>
+                    <input type="text" id="switch-port" class="settings-input" placeholder="5000" style="width: 100px;">
+                </div>
+                <p class="settings-hint">Switch IP address and FTP port (default: 5000)</p>
+                
+                <div class="settings-input-group" style="margin-top: 12px;">
+                    <input type="text" id="switch-ftp-path" class="settings-input" placeholder="/switch/atmosphere/contents">
+                </div>
+                <p class="settings-hint">Remote path on Switch SD card for mods</p>
+            </div>
+            
+            <div class="settings-section">
+                <label class="settings-label">Conflict Detection</label>
+                <div class="settings-input-group">
+                    <label class="settings-switch">
+                        <input type="checkbox" id="conflict-detection-enabled" checked>
+                        <span class="settings-switch-slider"></span>
+                    </label>
+                    <span style="margin-left: 12px; color: #cccccc;">Enable automatic conflict detection</span>
+                </div>
+                <p class="settings-hint">Automatically check for file conflicts between mods</p>
+            </div>
+        </div>
+
+        <!-- Logs Settings -->
+        <div class="settings-tab-content" id="settings-logs">
+            <h2 class="settings-title">Console Logs</h2>
+            
+            <div class="settings-section">
+                <label class="settings-label">Log Files Location</label>
+                <button class="settings-btn-action" id="open-logs-folder-btn">
+                    <i class="bi bi-folder2-open"></i>
+                    <div class="settings-btn-action-content">
+                        <span class="settings-btn-action-title">Open Logs Folder</span>
+                        <span class="settings-btn-action-desc">View all saved log files on disk</span>
+                    </div>
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+                <p class="settings-hint">Logs are automatically saved daily. Both main process and renderer logs are captured.</p>
+            </div>
+
+            <div class="settings-section">
+                <label class="settings-label">Live Console Output</label>
+                <div class="logs-toolbar">
+                    <div class="logs-filter-buttons">
+                        <button class="logs-filter-btn active" data-log-level="all">
+                            <i class="bi bi-list-ul"></i> All
+                        </button>
+                        <button class="logs-filter-btn" data-log-level="log">
+                            <i class="bi bi-info-circle"></i> Log
+                        </button>
+                        <button class="logs-filter-btn" data-log-level="warn">
+                            <i class="bi bi-exclamation-triangle"></i> Warn
+                        </button>
+                        <button class="logs-filter-btn" data-log-level="error">
+                            <i class="bi bi-x-circle"></i> Error
+                        </button>
+                    </div>
+                    <div class="logs-action-buttons">
+                        <button class="logs-action-btn" id="clear-logs-btn" title="Clear current session">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        <button class="logs-action-btn" id="copy-logs-btn" title="Copy to clipboard">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="logs-container" id="logs-container">
+                    <div class="logs-empty-state">
+                        <i class="bi bi-terminal"></i>
+                        <p>No logs yet. Console output will appear here.</p>
+                    </div>
+                </div>
+                <p class="settings-hint" style="margin-top: 12px;">
+                    <i class="bi bi-info-circle"></i> Showing logs from current session. Use "Open Logs Folder" above to view historical logs.
+                </p>
             </div>
         </div>
     </div>

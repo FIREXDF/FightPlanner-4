@@ -9,11 +9,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getPreviewImage: (modPath) => ipcRenderer.invoke('get-preview-image', modPath),
     getModInfo: (modPath) => ipcRenderer.invoke('get-mod-info', modPath),
     openFolder: (folderPath) => ipcRenderer.invoke('open-folder', folderPath),
+    openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
     openUrl: (url) => ipcRenderer.invoke('open-url', url),
+    openFightPlannerLink: (url) => ipcRenderer.invoke('open-fightplanner-link', url),
     renameMod: (modPath, newName) => ipcRenderer.invoke('rename-mod', modPath, newName),
     deleteMod: (modPath) => ipcRenderer.invoke('delete-mod', modPath),
     toggleMod: (modPath, modsBasePath) => ipcRenderer.invoke('toggle-mod', modPath, modsBasePath),
-    // Plugin operations
+
     readPluginsFolder: (path) => ipcRenderer.invoke('read-plugins-folder', path),
     selectPluginFile: (pluginsPath) => ipcRenderer.invoke('select-plugin-file', pluginsPath),
     togglePlugin: (pluginPath, pluginsBasePath) => ipcRenderer.invoke('toggle-plugin', pluginPath, pluginsBasePath),
@@ -26,15 +28,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
     scanModForFighters: (modPath) => ipcRenderer.invoke('scan-mod-for-fighters', modPath),
-    // Slot management
+
     scanModSlots: (modPath) => ipcRenderer.invoke('scan-mod-slots', modPath),
     applySlotChanges: (modPath, changes) => ipcRenderer.invoke('apply-slot-changes', modPath, changes),
-    // Tutorial window
+    detectConflicts: (modsPath, whitelistPatterns) => ipcRenderer.invoke('detect-conflicts', modsPath, whitelistPatterns),
+
     openTutorialWindow: () => ipcRenderer.invoke('open-tutorial-window'),
-    // Protocol events
+
     onModInstallStart: (callback) => ipcRenderer.on('mod-install-start', (event, data) => callback(data)),
     onModDownloadProgress: (callback) => ipcRenderer.on('mod-download-progress', (event, data) => callback(data)),
+    onModExtractStart: (callback) => ipcRenderer.on('mod-extract-start', (event, data) => callback(data)),
+    onModExtractComplete: (callback) => ipcRenderer.on('mod-extract-complete', (event, data) => callback(data)),
     onModInstallSuccess: (callback) => ipcRenderer.on('mod-install-success', (event, data) => callback(data)),
-    onModInstallError: (callback) => ipcRenderer.on('mod-install-error', (event, data) => callback(data))
+    onModInstallError: (callback) => ipcRenderer.on('mod-install-error', (event, data) => callback(data)),
+
+    cancelDownload: (downloadId) => ipcRenderer.invoke('cancel-download', downloadId),
+
+    sendModsToSwitch: (config) => ipcRenderer.invoke('send-mods-to-switch', config),
+
+    installModFromPath: (sourcePath, modsPath) => ipcRenderer.invoke('install-mod-from-path', sourcePath, modsPath),
+    selectModFile: () => ipcRenderer.invoke('select-mod-file'),
+
+    handleFilesDropped: (filePaths) => ipcRenderer.invoke('handle-files-dropped', filePaths),
+
+    updateToolsTabStatus: (status) => ipcRenderer.send('update-tools-tab-status', status),
+
+    onWindowDropFiles: (callback) => ipcRenderer.on('window-drop-files', (event, filePaths) => callback(filePaths)),
+    onDropResult: (callback) => ipcRenderer.on('drop-result', (event, data) => callback(data)),
+    onDropError: (callback) => ipcRenderer.on('drop-error', (event, error) => callback(error)),
+
+    onMainLog: (callback) => ipcRenderer.on('main-log', (event, logData) => callback(logData)),
+    getLogsPath: () => ipcRenderer.invoke('get-logs-path'),
+    readLogFile: (filePath) => ipcRenderer.invoke('read-log-file', filePath)
 });
 

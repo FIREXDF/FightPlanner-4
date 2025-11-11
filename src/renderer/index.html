@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/tutorial.css">
+    <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js"></script>
 </head>
 <body>
     <!-- Custom Title Bar -->
@@ -124,7 +125,21 @@
 
     <!-- Bottom Bar -->
     <div class="bottom-bar">
-        <div class="bottom-text">text</div>
+        <div class="bottom-text-left">Ready</div>
+        <div class="bottom-text-right"></div>
+    </div>
+
+    <!-- Social Onboarding (moved to body level to avoid container clipping) -->
+    <div id="social-onboarding" class="social-onboarding" style="display: none;">
+        <div id="social-onboarding-lottie" class="social-onboarding-lottie"></div>
+        <div class="social-onboarding-overlay">
+            <div class="social-onboarding-text">
+                <h2>Get started with FPT Social</h2>
+                <button id="social-get-started" class="social-btn social-btn-primary">
+                    Get Started
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Context Menu -->
@@ -252,10 +267,56 @@
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
+    <!-- Conflict Modal -->
+    <div id="conflict-modal" class="modal modal-conflict" style="display: none;">
+        <div class="modal-header conflict-modal-header">
+            <div class="conflict-header-left">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <h3>Mod Conflicts Detected</h3>
+                <span id="conflict-header-badge" class="conflict-header-badge">0 files in conflicts</span>
+            </div>
+            <button class="modal-close" onclick="window.conflictModalManager.closeConflictModal()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-hint" id="conflict-summary"></p>
+            <div id="conflict-list-container" class="conflict-list-container">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn conflict-change-slot-footer-btn" onclick="window.conflictModalManager.openGlobalSlotChange()">
+                <i class="bi bi-arrow-repeat"></i> Change Slot
+            </button>
+            <button class="modal-btn modal-btn-cancel" onclick="window.conflictModalManager.closeConflictModal()">
+                <i class="bi bi-x-lg"></i> Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Conflict Slot Change Modal -->
+    <div id="conflict-slot-modal" class="modal modal-large" style="display: none;">
+        <div class="modal-header">
+            <h3><i class="bi bi-grid-3x3-gap"></i> Change Slot for Conflicting Mod</h3>
+            <button class="modal-close" onclick="window.conflictModalManager.closeSlotChangeModal()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-hint">Select a mod to change its slot:</p>
+            <div id="conflict-mod-select-container" class="conflict-mod-select">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-cancel" onclick="window.conflictModalManager.closeSlotChangeModal()">Cancel</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="js/tutorial/tutorial-manager.js"></script>
     <script src="js/ui/toast-manager.js"></script>
     <script src="js/ui/modal-manager.js"></script>
+    <script src="js/logs/logs-manager.js"></script>
     <script src="js/fightplanner/fightplanner-manager.js"></script>
     <!-- Characters Manager -->
     <script src="js/characters/characters-data.js"></script>
@@ -274,13 +335,36 @@
     <script src="js/mods/mod-list-renderer.js"></script>
     <script src="js/mods/mod-context-menu.js"></script>
     <script src="js/mods/mod-operations.js"></script>
+    <script src="js/mods/mod-keybinds.js"></script>
+    <script src="js/mods/mod-drag-drop.js"></script>
     <script src="js/mods/mod-manager.js"></script>
     <!-- End Mod Manager -->
     <!-- Plugin Manager -->
     <script src="js/mods/plugin-manager.js"></script>
     <!-- End Plugin Manager -->
     <script src="js/ui/resize-handler.js"></script>
+    <script src="js/ui/status-bar-manager.js"></script>
+    <script src="js/ui/conflict-modal-manager.js"></script>
     <script src="js/core/renderer.js"></script>
+    <script src="js/social/social-manager.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

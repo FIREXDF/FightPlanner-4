@@ -1,419 +1,618 @@
-// Download Manager - Manages downloads display in Downloads tab
-
 class DownloadManager {
-    constructor() {
-        this.activeDownloads = new Map(); // downloadId -> download data
-        this.completedDownloads = [];
-        this.activeDownloadsList = null;
-        this.completedDownloadsList = null;
-        this.downloadsEmpty = null;
-        this.downloadsCount = null;
-        this.clearCompletedBtn = null;
-        this.initialized = false;
-    }
-
-    initialize() {
-        console.log('Initializing Download Manager...');
-        
-        // Get DOM elements
-        this.activeDownloadsList = document.getElementById('active-downloads-list');
-        this.completedDownloadsList = document.getElementById('completed-downloads-list');
-        this.downloadsEmpty = document.getElementById('downloads-empty');
-        this.downloadsCount = document.getElementById('downloads-count');
-        this.clearCompletedBtn = document.getElementById('clear-completed-btn');
-
-        if (!this.activeDownloadsList || !this.completedDownloadsList) {
-            console.error('Download lists not found');
-            return;
-        }
-
-        this.initialized = true;
-
-        // Setup event listeners
-        this.setupEventListeners();
-
-        // Render any downloads that were started before initialization
-        this.renderAllDownloads();
-
-        // Update UI
-        this.updateUI();
-
-        console.log('Download Manager initialized');
-    }
-
-    /**
-     * Render all stored downloads (called when tab is opened)
-     */
-    renderAllDownloads() {
-        // Clear existing lists
-        if (this.activeDownloadsList) {
-            this.activeDownloadsList.innerHTML = '';
-        }
-        if (this.completedDownloadsList) {
-            this.completedDownloadsList.innerHTML = '';
-        }
-
-        // Render active downloads
-        this.activeDownloads.forEach(download => {
-            this.renderActiveDownload(download);
-        });
-
-        // Render completed downloads
-        this.completedDownloads.forEach(download => {
-            this.renderCompletedDownload(download);
-        });
-    }
-
-    setupEventListeners() {
-        if (this.clearCompletedBtn) {
-            this.clearCompletedBtn.addEventListener('click', () => {
-                this.clearCompleted();
-            });
-        }
-    }
-
-    /**
-     * Start a new download
-     */
-    startDownload(url) {
-        const downloadId = Date.now().toString();
-        const download = {
-            id: downloadId,
-            url: url,
-            fileName: this.extractFileName(url),
-            status: 'downloading',
-            progress: 0,
-            receivedBytes: 0,
-            totalBytes: 0,
-            startTime: Date.now()
-        };
-
-        this.activeDownloads.set(downloadId, download);
-        
-        // Only render if DOM is available
-        if (this.initialized) {
-            this.renderActiveDownload(download);
-            this.updateUI();
-        }
-        
-        // Always update badge (works even without DOM)
-        this.updateBadge();
-
-        // Don't auto-switch tabs - just show badge notification
-
-        return downloadId;
-    }
-
-    /**
-     * Update download progress
-     */
-    updateProgress(downloadId, progress, receivedBytes, totalBytes) {
-        const download = this.activeDownloads.get(downloadId);
-        if (!download) {
-            // If no specific download ID, update the most recent one
-            const downloads = Array.from(this.activeDownloads.values());
-            if (downloads.length > 0) {
-                const latestDownload = downloads[downloads.length - 1];
-                this.updateProgress(latestDownload.id, progress, receivedBytes, totalBytes);
-            }
-            return;
-        }
-
-        download.progress = progress;
-        download.receivedBytes = receivedBytes;
-        download.totalBytes = totalBytes;
-
-        // Update the download element
-        const element = document.querySelector(`[data-download-id="${downloadId}"]`);
-        if (element) {
-            const progressBar = element.querySelector('.download-progress-fill');
-            const progressText = element.querySelector('.download-progress-text');
-            
-            if (progressBar) {
-                progressBar.style.width = `${progress}%`;
-            }
-            
-            if (progressText) {
-                progressText.textContent = `${progress}% (${this.formatBytes(receivedBytes)} / ${this.formatBytes(totalBytes)})`;
-            }
-        }
-    }
-
-    /**
-     * Complete a download
-     */
-    completeDownload(downloadId, modName) {
-        const download = this.activeDownloads.get(downloadId);
-        if (!download) {
-            // If no specific download ID, complete the most recent one
-            const downloads = Array.from(this.activeDownloads.values());
-            if (downloads.length > 0) {
-                const latestDownload = downloads[downloads.length - 1];
-                this.completeDownload(latestDownload.id, modName);
-            }
-            return;
-        }
-
-        download.status = 'completed';
-        download.progress = 100;
-        download.modName = modName || download.fileName;
-        download.endTime = Date.now();
-
-        // Move to completed list
-        this.activeDownloads.delete(downloadId);
-        this.completedDownloads.unshift(download); // Add at the beginning
-
-        // Only manipulate DOM if initialized
-        if (this.initialized) {
-            // Remove from active list
-            const element = document.querySelector(`[data-download-id="${downloadId}"]`);
-            if (element) {
-                element.remove();
-            }
-
-            // Add to completed list
-            this.renderCompletedDownload(download);
-            this.updateUI();
-        }
-        
-        this.updateBadge();
-    }
-
-    /**
-     * Fail a download
-     */
-    failDownload(downloadId, error) {
-        const download = this.activeDownloads.get(downloadId);
-        if (!download) {
-            // If no specific download ID, fail the most recent one
-            const downloads = Array.from(this.activeDownloads.values());
-            if (downloads.length > 0) {
-                const latestDownload = downloads[downloads.length - 1];
-                this.failDownload(latestDownload.id, error);
-            }
-            return;
-        }
-
-        download.status = 'failed';
-        download.error = error;
-
-        // Update the download element
-        const element = document.querySelector(`[data-download-id="${downloadId}"]`);
-        if (element) {
-            element.classList.add('download-failed');
-            const statusText = element.querySelector('.download-status-text');
-            if (statusText) {
-                statusText.innerHTML = `<i class="bi bi-x-circle"></i> Failed: ${error}`;
-                statusText.style.color = '#ff4444';
-            }
-        }
-
-        // Remove from active downloads after 5 seconds
-        setTimeout(() => {
-            this.activeDownloads.delete(downloadId);
-            if (element) {
-                element.remove();
-            }
-            this.updateUI();
-            this.updateBadge();
-        }, 5000);
-    }
-
-    /**
-     * Render active download
-     */
-    renderActiveDownload(download) {
-        // Only render if DOM is available
-        if (!this.activeDownloadsList) return;
-
-        const element = document.createElement('div');
-        element.className = 'download-item download-active';
-        element.setAttribute('data-download-id', download.id);
-        element.innerHTML = `
-            <div class="download-icon">
-                <i class="bi bi-download"></i>
-            </div>
-            <div class="download-info">
-                <div class="download-name">${download.fileName}</div>
-                <div class="download-url">${this.shortenUrl(download.url)}</div>
-                <div class="download-progress-container">
-                    <div class="download-progress-bar">
-                        <div class="download-progress-fill" style="width: ${download.progress}%"></div>
-                    </div>
-                    <div class="download-progress-text">0%</div>
-                </div>
-                <div class="download-status-text">Downloading...</div>
-            </div>
-        `;
-
-        this.activeDownloadsList.appendChild(element);
-    }
-
-    /**
-     * Render completed download
-     */
-    renderCompletedDownload(download) {
-        // Only render if DOM is available
-        if (!this.completedDownloadsList) return;
-
-        const element = document.createElement('div');
-        element.className = 'download-item download-completed';
-        element.setAttribute('data-download-id', download.id);
-        
-        const duration = this.formatDuration(download.endTime - download.startTime);
-        
-        element.innerHTML = `
-            <div class="download-icon download-icon-success">
-                <i class="bi bi-check-circle-fill"></i>
-            </div>
-            <div class="download-info">
-                <div class="download-name">${download.modName || download.fileName}</div>
-                <div class="download-url">${this.shortenUrl(download.url)}</div>
-                <div class="download-meta">
-                    <span><i class="bi bi-check-circle"></i> Completed in ${duration}</span>
-                    <span><i class="bi bi-file-earmark-zip"></i> ${this.formatBytes(download.totalBytes)}</span>
-                </div>
-            </div>
-        `;
-
-        this.completedDownloadsList.appendChild(element);
-    }
-
-    /**
-     * Update UI visibility
-     */
-    updateUI() {
-        const hasActiveDownloads = this.activeDownloads.size > 0;
-        const hasCompletedDownloads = this.completedDownloads.length > 0;
-        const hasAnyDownloads = hasActiveDownloads || hasCompletedDownloads;
-
-        // Show/hide empty state
-        if (this.downloadsEmpty) {
-            this.downloadsEmpty.style.display = hasAnyDownloads ? 'none' : 'flex';
-        }
-
-        // Show/hide sections
-        const activeSections = document.getElementById('active-downloads-section');
-        const completedSections = document.getElementById('completed-downloads-section');
-        
-        if (activeSections) {
-            activeSections.style.display = hasActiveDownloads ? 'block' : 'none';
-        }
-        
-        if (completedSections) {
-            completedSections.style.display = hasCompletedDownloads ? 'block' : 'none';
-        }
-
-        // Update count
-        if (this.downloadsCount) {
-            const totalCount = this.activeDownloads.size + this.completedDownloads.length;
-            this.downloadsCount.textContent = totalCount;
-        }
-
-        // Clear completed button
-        if (this.clearCompletedBtn) {
-            this.clearCompletedBtn.style.display = hasCompletedDownloads ? 'block' : 'none';
-        }
-    }
-
-    /**
-     * Update notification badge
-     */
-    updateBadge() {
-        const downloadsBtn = document.querySelector('[data-tab="downloads"]');
-        if (!downloadsBtn) return;
-
-        let badge = downloadsBtn.querySelector('.notification-badge');
-        
-        if (this.activeDownloads.size > 0) {
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'notification-badge';
-                downloadsBtn.style.position = 'relative';
-                downloadsBtn.appendChild(badge);
-            }
-            badge.textContent = this.activeDownloads.size;
-            badge.style.display = 'flex';
-        } else {
-            if (badge) {
-                badge.style.display = 'none';
-            }
-        }
-    }
-
-    /**
-     * Switch to downloads tab
-     */
-    switchToDownloadsTab() {
-        const downloadsBtn = document.querySelector('[data-tab="downloads"]');
-        if (downloadsBtn) {
-            downloadsBtn.click();
-        }
-    }
-
-    /**
-     * Clear completed downloads
-     */
-    clearCompleted() {
-        this.completedDownloads = [];
-        if (this.completedDownloadsList) {
-            this.completedDownloadsList.innerHTML = '';
-        }
-        this.updateUI();
-    }
-
-    /**
-     * Extract filename from URL
-     */
-    extractFileName(url) {
-        try {
-            const urlObj = new URL(url);
-            const pathname = urlObj.pathname;
-            const filename = pathname.substring(pathname.lastIndexOf('/') + 1);
-            return filename || 'mod.zip';
-        } catch {
-            return 'mod.zip';
-        }
-    }
-
-    /**
-     * Shorten URL for display
-     */
-    shortenUrl(url) {
-        if (url.length > 60) {
-            return url.substring(0, 57) + '...';
-        }
-        return url;
-    }
-
-    /**
-     * Format bytes
-     */
-    formatBytes(bytes) {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    /**
-     * Format duration
-     */
-    formatDuration(ms) {
-        const seconds = Math.floor(ms / 1000);
-        if (seconds < 60) {
-            return `${seconds}s`;
-        }
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes}m ${remainingSeconds}s`;
-    }
+constructor() {
+this.activeDownloads = new Map();
+this.completedDownloads = [];
+this.activeDownloadsList = null;
+this.completedDownloadsList = null;
+this.downloadsEmpty = null;
+this.downloadsCount = null;
+this.clearCompletedBtn = null;
+this.sendToSwitchBtn = null;
+this.initialized = false;
+this.ftpTransfer = null;
 }
 
-// Initialize on window load
+initialize() {
+console.log('Initializing Download Manager...');
+
+this.activeDownloadsList = document.getElementById('active-downloads-list');
+this.completedDownloadsList = document.getElementById('completed-downloads-list');
+this.downloadsEmpty = document.getElementById('downloads-empty');
+this.downloadsCount = document.getElementById('downloads-count');
+this.clearCompletedBtn = document.getElementById('clear-completed-btn');
+this.sendToSwitchBtn = document.getElementById('send-to-switch-btn');
+
+if (!this.activeDownloadsList || !this.completedDownloadsList) {
+console.error('Download lists not found');
+return;
+}
+
+this.initialized = true;
+
+this.setupEventListeners();
+
+this.renderAllDownloads();
+
+this.updateUI();
+
+console.log('Download Manager initialized');
+}
+
+/**
+* Render all stored downloads (called when tab is opened)
+*/
+renderAllDownloads() {
+
+if (this.activeDownloadsList) {
+this.activeDownloadsList.innerHTML = '';
+}
+if (this.completedDownloadsList) {
+this.completedDownloadsList.innerHTML = '';
+}
+
+this.activeDownloads.forEach(download => {
+this.renderActiveDownload(download);
+});
+
+this.completedDownloads.forEach(download => {
+this.renderCompletedDownload(download);
+});
+}
+
+setupEventListeners() {
+if (this.clearCompletedBtn) {
+this.clearCompletedBtn.addEventListener('click', () => {
+this.clearCompleted();
+});
+}
+
+if (this.sendToSwitchBtn) {
+this.sendToSwitchBtn.addEventListener('click', () => {
+this.sendToSwitch();
+});
+}
+}
+
+/**
+* Start a new download
+*/
+startDownload(url, forcedId) {
+const downloadId = forcedId || Date.now().toString();
+const download = {
+id: downloadId,
+url: url,
+fileName: this.extractFileName(url),
+status: 'downloading',
+progress: 0,
+receivedBytes: 0,
+totalBytes: 0,
+startTime: Date.now()
+};
+
+this.activeDownloads.set(downloadId, download);
+
+if (this.initialized) {
+this.renderActiveDownload(download);
+this.updateUI();
+}
+
+this.updateBadge();
+
+if (window.statusBarManager) {
+window.statusBarManager.checkAndUpdateForDownloads();
+}
+
+return downloadId;
+}
+
+/**
+* Update download progress
+*/
+updateProgress(downloadId, progress, receivedBytes, totalBytes) {
+const download = this.activeDownloads.get(downloadId);
+if (!download) {
+return;
+}
+
+download.progress = progress;
+download.receivedBytes = receivedBytes;
+download.totalBytes = totalBytes;
+
+const element = document.querySelector(`[data-download-id="${downloadId}"]`);
+if (element) {
+const progressBar = element.querySelector('.download-progress-fill');
+const progressText = element.querySelector('.download-progress-text');
+
+if (progressBar) {
+progressBar.style.width = `${progress}%`;
+}
+
+if (progressText) {
+progressText.textContent = `${progress}% (${this.formatBytes(receivedBytes)} / ${this.formatBytes(totalBytes)})`;
+}
+}
+}
+
+/**
+* Mark extracting phase
+*/
+markExtracting(downloadId) {
+const download = this.activeDownloads.get(downloadId);
+if (!download) return;
+const element = document.querySelector(`[data-download-id="${downloadId}"]`);
+if (element) {
+const statusText = element.querySelector('.download-status-text');
+const progressText = element.querySelector('.download-progress-text');
+if (statusText) statusText.innerHTML = '<i class="bi bi-file-zip"></i> Extracting...';
+if (progressText) progressText.textContent = 'Processing...';
+}
+}
+
+/**
+* Complete a download
+*/
+completeDownload(downloadId, modName, folderPath = null) {
+const download = this.activeDownloads.get(downloadId);
+if (!download) {
+
+const downloads = Array.from(this.activeDownloads.values());
+if (downloads.length > 0) {
+const latestDownload = downloads[downloads.length - 1];
+this.completeDownload(latestDownload.id, modName, folderPath);
+}
+return;
+}
+
+download.status = 'completed';
+download.progress = 100;
+download.modName = modName || download.fileName;
+download.folderPath = folderPath;
+download.endTime = Date.now();
+
+this.activeDownloads.delete(downloadId);
+this.completedDownloads.unshift(download);
+
+if (this.initialized) {
+
+const element = document.querySelector(`[data-download-id="${downloadId}"]`);
+if (element) {
+element.remove();
+}
+
+this.renderCompletedDownload(download);
+this.updateUI();
+}
+
+this.updateBadge();
+
+if (window.statusBarManager) {
+window.statusBarManager.checkAndUpdateForDownloads();
+}
+}
+
+/**
+* Fail a download
+*/
+failDownload(downloadId, error) {
+const download = this.activeDownloads.get(downloadId);
+if (!download) {
+
+const downloads = Array.from(this.activeDownloads.values());
+if (downloads.length > 0) {
+const latestDownload = downloads[downloads.length - 1];
+this.failDownload(latestDownload.id, error);
+}
+return;
+}
+
+download.status = 'failed';
+download.error = error;
+
+const element = document.querySelector(`[data-download-id="${downloadId}"]`);
+if (element) {
+element.classList.add('download-failed');
+const statusText = element.querySelector('.download-status-text');
+if (statusText) {
+statusText.innerHTML = `<i class="bi bi-x-circle"></i> Failed: ${error}`;
+statusText.style.color = '#ff4444';
+}
+}
+
+setTimeout(() => {
+this.activeDownloads.delete(downloadId);
+if (element) {
+element.remove();
+}
+this.updateUI();
+this.updateBadge();
+
+if (window.statusBarManager) {
+window.statusBarManager.checkAndUpdateForDownloads();
+}
+}, 5000);
+}
+
+/**
+* Render active download
+*/
+renderActiveDownload(download) {
+
+if (!this.activeDownloadsList) return;
+
+const element = document.createElement('div');
+element.className = 'download-item download-active';
+element.setAttribute('data-download-id', download.id);
+element.innerHTML = `
+<div class="download-icon">
+<i class="bi bi-download"></i>
+</div>
+<div class="download-info">
+<div class="download-name">${download.fileName}</div>
+<div class="download-url">${this.shortenUrl(download.url)}</div>
+<div class="download-progress-container">
+<div class="download-progress-bar">
+<div class="download-progress-fill" style="width: ${download.progress}%"></div>
+</div>
+<div class="download-progress-text">0%</div>
+</div>
+<div class="download-status-text">Downloading...</div>
+</div>
+<div class="download-actions">
+  <button class="download-action-btn" data-action="cancel" title="Cancel"><i class="bi bi-x-circle"></i></button>
+</div>
+`;
+
+// Add event listeners for action buttons
+const cancelBtn = element.querySelector('[data-action="cancel"]');
+
+if (cancelBtn) {
+  cancelBtn.addEventListener('click', () => this.cancelDownload(download.id));
+}
+
+this.activeDownloadsList.appendChild(element);
+}
+
+/**
+* Render completed download
+*/
+renderCompletedDownload(download) {
+  if (!this.completedDownloadsList) return;
+
+  const element = document.createElement('div');
+  element.className = 'download-item download-completed';
+  element.setAttribute('data-download-id', download.id);
+
+  // Safely format duration
+  let duration = 'N/A';
+  if (download.endTime && download.startTime) {
+    try {
+      duration = this.formatDuration(download.endTime - download.startTime);
+    } catch (e) {
+      console.warn('Error formatting duration:', e);
+    }
+  }
+
+  // Safely format file size
+  let fileSize = 'Unknown';
+  if (download.totalBytes) {
+    try {
+      fileSize = this.formatBytes(download.totalBytes);
+    } catch (e) {
+      console.warn('Error formatting bytes:', e);
+    }
+  }
+
+  element.innerHTML = `
+    <div class="download-icon download-icon-success">
+      <i class="bi bi-check-circle-fill"></i>
+    </div>
+    <div class="download-info">
+      <div class="download-name">${download.modName || download.fileName}</div>
+      <div class="download-url">${this.shortenUrl(download.url)}</div>
+      <div class="download-meta">
+        <span><i class="bi bi-check-circle"></i> Completed in ${duration}</span>
+        <span><i class="bi bi-file-earmark-zip"></i> ${fileSize}</span>
+      </div>
+    </div>
+  `;
+
+  this.completedDownloadsList.appendChild(element);
+}
+
+/**
+* Update UI visibility
+*/
+updateUI() {
+const hasActiveDownloads = this.activeDownloads.size > 0;
+const hasCompletedDownloads = this.completedDownloads.length > 0;
+const hasAnyDownloads = hasActiveDownloads || hasCompletedDownloads;
+
+if (this.downloadsEmpty) {
+this.downloadsEmpty.style.display = hasAnyDownloads ? 'none' : 'flex';
+}
+
+const activeSections = document.getElementById('active-downloads-section');
+const completedSections = document.getElementById('completed-downloads-section');
+
+if (activeSections) {
+activeSections.style.display = hasActiveDownloads ? 'block' : 'none';
+}
+
+if (completedSections) {
+completedSections.style.display = hasCompletedDownloads ? 'block' : 'none';
+}
+
+if (this.downloadsCount) {
+const totalCount = this.activeDownloads.size + this.completedDownloads.length;
+this.downloadsCount.textContent = totalCount;
+}
+
+if (this.clearCompletedBtn) {
+this.clearCompletedBtn.style.display = hasCompletedDownloads ? 'block' : 'none';
+}
+}
+
+/**
+* Update notification badge
+*/
+updateBadge() {
+const downloadsBtn = document.querySelector('[data-tab="downloads"]');
+if (!downloadsBtn) return;
+
+let badge = downloadsBtn.querySelector('.notification-badge');
+
+if (this.activeDownloads.size > 0) {
+if (!badge) {
+badge = document.createElement('span');
+badge.className = 'notification-badge';
+downloadsBtn.style.position = 'relative';
+downloadsBtn.appendChild(badge);
+}
+badge.textContent = this.activeDownloads.size;
+badge.style.display = 'flex';
+} else {
+if (badge) {
+badge.style.display = 'none';
+}
+}
+}
+
+/**
+* Switch to downloads tab
+*/
+switchToDownloadsTab() {
+const downloadsBtn = document.querySelector('[data-tab="downloads"]');
+if (downloadsBtn) {
+downloadsBtn.click();
+}
+}
+
+/**
+* Clear completed downloads
+*/
+clearCompleted() {
+this.completedDownloads = [];
+if (this.completedDownloadsList) {
+this.completedDownloadsList.innerHTML = '';
+}
+this.updateUI();
+}
+
+/**
+* Extract filename from URL
+*/
+extractFileName(url) {
+try {
+const urlObj = new URL(url);
+const pathname = urlObj.pathname;
+const filename = pathname.substring(pathname.lastIndexOf('/') + 1);
+return filename || 'mod.zip';
+} catch {
+return 'mod.zip';
+}
+}
+
+/**
+* Shorten URL for display
+*/
+shortenUrl(url) {
+if (url.length > 60) {
+return url.substring(0, 57) + '...';
+}
+return url;
+}
+
+/**
+* Format bytes
+*/
+formatBytes(bytes) {
+if (bytes === 0) return '0 B';
+const k = 1024;
+const sizes = ['B', 'KB', 'MB', 'GB'];
+const i = Math.floor(Math.log(bytes) / Math.log(k));
+return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+* Format duration
+*/
+formatDuration(ms) {
+const seconds = Math.floor(ms / 1000);
+if (seconds < 60) {
+return `${seconds}s`;
+}
+const minutes = Math.floor(seconds / 60);
+const remainingSeconds = seconds % 60;
+return `${minutes}m ${remainingSeconds}s`;
+}
+
+/**
+* Send newly installed mods to Switch via FTP
+*/
+async sendToSwitch() {
+// Check if Switch settings are configured
+if (!window.settingsManager || !window.settingsManager.hasSwitchConfig()) {
+  if (window.toastManager) {
+    window.toastManager.error('Please configure Switch settings in Settings > Advanced');
+  } else {
+    alert('Please configure Switch settings in Settings > Advanced');
+  }
+  return;
+}
+
+const switchIp = window.settingsManager.getSwitchIp();
+const switchPort = parseInt(window.settingsManager.getSwitchPort());
+const switchFtpPath = window.settingsManager.getSwitchFtpPath() || '/switch';
+
+// Get mods path
+if (!window.settingsManager || !window.settingsManager.hasModsPath()) {
+  if (window.toastManager) {
+    window.toastManager.error('Please set the mods folder path in Settings');
+  } else {
+    alert('Please set the mods folder path in Settings');
+  }
+  return;
+}
+
+const modsPath = window.settingsManager.getModsPath();
+
+// Get all recently completed downloads (newly installed mods)
+const recentMods = this.completedDownloads.filter(download => {
+  // Only include downloads completed in the last 24 hours
+  const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+  return download.endTime && download.endTime > oneDayAgo;
+});
+
+if (recentMods.length === 0) {
+  if (window.toastManager) {
+    window.toastManager.info('No recent downloads to send. All mods will be synced.');
+  }
+}
+
+// Call the Electron API to send mods to Switch
+if (!window.electronAPI || !window.electronAPI.sendModsToSwitch) {
+  if (window.toastManager) {
+    window.toastManager.error('FTP functionality not available');
+  } else {
+    alert('FTP functionality not available');
+  }
+  console.error('Electron API sendModsToSwitch not available');
+  return;
+}
+
+try {
+  if (this.sendToSwitchBtn) {
+    this.sendToSwitchBtn.disabled = true;
+    this.sendToSwitchBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Sending...';
+  }
+
+  // Update FTP transfer status
+  this.ftpTransfer = {
+    status: 'uploading',
+    currentMod: 0,
+    totalMods: recentMods.length || 0,
+    transferredCount: 0
+  };
+
+  if (window.statusBarManager) {
+    window.statusBarManager.checkAndUpdateForDownloads();
+  }
+
+  if (window.toastManager) {
+    window.toastManager.info('Starting FTP transfer to Switch...');
+  }
+
+  const result = await window.electronAPI.sendModsToSwitch({
+    switchIp,
+    switchPort,
+    switchFtpPath,
+    modsPath,
+    recentMods: recentMods.map(m => ({
+      id: m.id,
+      modName: m.modName || m.fileName,
+      folderPath: m.folderPath || null
+    }))
+  });
+
+  if (this.sendToSwitchBtn) {
+    this.sendToSwitchBtn.disabled = false;
+    this.sendToSwitchBtn.innerHTML = '<i class="bi bi-device-hdd"></i> Send To Switch';
+  }
+
+  // Clear FTP transfer status
+  this.ftpTransfer = null;
+
+  if (result.success) {
+    if (window.toastManager) {
+      window.toastManager.success(`Successfully sent ${result.transferredCount || 0} mods to Switch!`);
+    }
+  } else {
+    if (window.toastManager) {
+      window.toastManager.error(`Failed to send mods: ${result.error || 'Unknown error'}`);
+    } else {
+      alert(`Failed to send mods: ${result.error || 'Unknown error'}`);
+    }
+  }
+} catch (error) {
+  console.error('Error sending mods to Switch:', error);
+  if (this.sendToSwitchBtn) {
+    this.sendToSwitchBtn.disabled = false;
+    this.sendToSwitchBtn.innerHTML = '<i class="bi bi-device-hdd"></i> Send To Switch';
+  }
+  this.ftpTransfer = null;
+  if (window.toastManager) {
+    window.toastManager.error(`Error: ${error.message}`);
+  } else {
+    alert(`Error: ${error.message}`);
+  }
+}
+
+if (window.statusBarManager) {
+  window.statusBarManager.checkAndUpdateForDownloads();
+}
+}
+
+
+/**
+* Cancel a download
+*/
+cancelDownload(downloadId) {
+  const download = this.activeDownloads.get(downloadId);
+  if (!download) return;
+
+  // Call main process to cancel download
+  if (window.electronAPI && window.electronAPI.cancelDownload) {
+    window.electronAPI.cancelDownload(downloadId);
+  }
+
+  this.activeDownloads.delete(downloadId);
+  
+  const element = document.querySelector(`[data-download-id="${downloadId}"]`);
+  if (element) {
+    element.classList.add('download-failed');
+    const statusText = element.querySelector('.download-status-text');
+    if (statusText) {
+      statusText.innerHTML = '<i class="bi bi-x-circle"></i> Cancelled';
+      statusText.style.color = '#ef4444';
+    }
+  }
+
+  setTimeout(() => {
+    if (element && element.parentElement) {
+      element.remove();
+    }
+    this.updateUI();
+    this.updateBadge();
+  }, 2000);
+
+  if (window.toastManager) {
+    window.toastManager.warning('Download cancelled');
+  }
+}
+}
+
 if (typeof window !== 'undefined') {
-    window.downloadManager = new DownloadManager();
-    console.log('Download Manager created');
+window.downloadManager = new DownloadManager();
+console.log('Download Manager created');
 }
 

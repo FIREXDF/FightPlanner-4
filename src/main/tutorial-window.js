@@ -9,15 +9,14 @@ function createTutorialWindow(parentWindow) {
         return tutorialWindow;
     }
 
-    // Same size as main window
     const width = 1300;
     const height = 800;
 
     tutorialWindow = new BrowserWindow({
         width: width,
         height: height,
-        center: true, // Center on screen
-        transparent: true, // TRANSPARENT pour voir le bureau
+        center: true,
+        transparent: true,
         frame: false,
         alwaysOnTop: true,
         hasShadow: false,
@@ -35,10 +34,8 @@ function createTutorialWindow(parentWindow) {
 
     tutorialWindow.loadFile(path.join(__dirname, '../renderer/tutorial.html'));
 
-    // Remove menu bar
     tutorialWindow.setMenuBarVisibility(false);
 
-    // Log when window is ready
     tutorialWindow.webContents.on('did-finish-load', () => {
         console.log('Tutorial window loaded successfully');
     });
@@ -56,7 +53,7 @@ function closeTutorialWindow() {
     if (tutorialWindow && !tutorialWindow.isDestroyed()) {
         console.log('Tutorial window exists, destroying...');
         try {
-            tutorialWindow.destroy(); // Force close without asking
+            tutorialWindow.destroy();
             console.log('Tutorial window destroyed');
         } catch (error) {
             console.error('Error destroying tutorial window:', error);

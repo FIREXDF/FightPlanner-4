@@ -1,4 +1,4 @@
-// Plugin Utils - Gestion des fichiers .nro
+
 const fs = require('fs');
 const path = require('path');
 
@@ -15,15 +15,14 @@ class PluginUtils {
         };
 
         try {
-            // Read active plugins
+
             if (fs.existsSync(pluginsPath)) {
                 const files = fs.readdirSync(pluginsPath);
-                
+
                 files.forEach(file => {
                     const filePath = path.join(pluginsPath, file);
                     const stats = fs.statSync(filePath);
-                    
-                    // Only include .nro files
+
                     if (stats.isFile() && path.extname(file).toLowerCase() === '.nro') {
                         result.activePlugins.push({
                             name: file,
@@ -34,18 +33,16 @@ class PluginUtils {
                 });
             }
 
-            // Read disabled plugins (same level as plugins folder)
             const parentDir = path.dirname(pluginsPath);
             const disabledPluginsPath = path.join(parentDir, 'disabled_plugins');
-            
+
             if (fs.existsSync(disabledPluginsPath)) {
                 const files = fs.readdirSync(disabledPluginsPath);
-                
+
                 files.forEach(file => {
                     const filePath = path.join(disabledPluginsPath, file);
                     const stats = fs.statSync(filePath);
-                    
-                    // Only include .nro files
+
                     if (stats.isFile() && path.extname(file).toLowerCase() === '.nro') {
                         result.disabledPlugins.push({
                             name: file,
@@ -89,26 +86,25 @@ class PluginUtils {
             const pluginName = path.basename(pluginPath);
             const parentDir = path.dirname(pluginsBasePath);
             const disabledPluginsPath = path.join(parentDir, 'disabled_plugins');
-            
-            // Check if plugin is currently active or disabled
+
             const isActive = pluginPath.startsWith(pluginsBasePath);
-            
+
             let targetPath;
             if (isActive) {
-                // Move to disabled_plugins
+
                 if (!fs.existsSync(disabledPluginsPath)) {
                     fs.mkdirSync(disabledPluginsPath, { recursive: true });
                 }
                 targetPath = path.join(disabledPluginsPath, pluginName);
             } else {
-                // Move to active plugins
+
                 targetPath = path.join(pluginsBasePath, pluginName);
             }
-            
+
             if (fs.existsSync(targetPath)) {
                 return { success: false, error: 'A plugin with this name already exists in the target location' };
             }
-            
+
             fs.renameSync(pluginPath, targetPath);
             return { success: true, newPath: targetPath, isNowActive: !isActive };
         } catch (error) {
@@ -127,7 +123,7 @@ class PluginUtils {
             if (!fs.existsSync(pluginPath)) {
                 return { success: false, error: 'Plugin file does not exist' };
             }
-            
+
             fs.unlinkSync(pluginPath);
             return { success: true };
         } catch (error) {
@@ -148,7 +144,6 @@ class PluginUtils {
                 return { success: false, error: 'Source file does not exist' };
             }
 
-            // Check if it's a .nro file
             if (path.extname(sourcePath).toLowerCase() !== '.nro') {
                 return { success: false, error: 'Only .nro files are supported' };
             }
@@ -160,7 +155,6 @@ class PluginUtils {
                 return { success: false, error: 'A plugin with this name already exists' };
             }
 
-            // Ensure target folder exists
             if (!fs.existsSync(targetFolder)) {
                 fs.mkdirSync(targetFolder, { recursive: true });
             }

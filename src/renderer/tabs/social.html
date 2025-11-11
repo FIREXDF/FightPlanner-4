@@ -1,8 +1,341 @@
 <!-- Social Tab Content -->
-<div class="content-box">
-    <h2>Social</h2>
-    <!-- Ajoute ton contenu ici -->
+<div class="social-tab">
+    <!-- Onboarding overlay (first time only) -->
+    <div id="social-onboarding" class="social-onboarding" style="display: none;">
+        <div id="social-onboarding-lottie" class="social-onboarding-lottie"></div>
+        <div class="social-onboarding-overlay">
+            <div class="social-onboarding-text">
+                <h2>Get started with FPT Social</h2>
+                <button id="social-get-started" class="social-btn social-btn-primary">
+                    Get Started
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login screen (shown after onboarding) -->
+    <div id="social-login-container" class="social-login-container" style="display: none;">
+        <div id="social-lottie" class="social-lottie"></div>
+
+        <div class="social-login-card">
+            <h2 class="social-title">Connect to FightPlanner</h2>
+            <p class="social-subtitle">Sign in to sync your mods, share and download</p>
+            <form id="social-login-form" class="social-form">
+                <div class="social-form-group">
+                    <label for="social-email" class="social-label">Email</label>
+                    <input type="email" id="social-email" class="social-input" placeholder="your.email@example.com" required>
+                </div>
+                <div class="social-form-group">
+                    <label for="social-password" class="social-label">Password</label>
+                    <input type="password" id="social-password" class="social-input" placeholder="Enter your password" required>
+                </div>
+                <div class="social-form-options">
+                    <label class="social-checkbox-label">
+                        <input type="checkbox" id="social-remember" class="social-checkbox">
+                        <span>Remember me</span>
+                    </label>
+                    <a href="#" id="social-forgot" class="social-link">Forgot password?</a>
+                </div>
+                <button type="submit" class="social-btn social-btn-primary">
+                    <i class="bi bi-box-arrow-in-right"></i> Sign In
+                </button>
+                <p class="social-hint">Don't have an account? <a href="#" id="social-create" class="social-link">Create one</a></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="social-forgot-modal" class="social-modal" style="display: none;">
+        <div class="social-modal-content">
+            <div class="social-modal-header">
+                <h2 class="social-modal-title">Reset Password</h2>
+                <button id="social-forgot-close" class="social-modal-close">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="social-modal-body">
+                <p class="social-modal-text">Enter your email address and we'll send you a link to reset your password.</p>
+                <form id="social-forgot-form" class="social-form">
+                    <div class="social-form-group">
+                        <label for="social-forgot-email" class="social-label">Email</label>
+                        <input type="email" id="social-forgot-email" class="social-input" placeholder="your.email@example.com" required>
+                    </div>
+                    <button type="submit" class="social-btn social-btn-primary" style="width: 100%;">
+                        <i class="bi bi-envelope"></i> Send Reset Link
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+        <!-- Remove Friend Modal -->
+        <div id="social-remove-friend-modal" class="social-modal" style="display: none; opacity: 0;">
+            <div class="social-modal-content">
+                <div class="social-modal-header">
+                    <h2 class="social-modal-title">Remove Friend</h2>
+                    <button id="social-remove-friend-close" class="social-modal-close">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <div class="social-modal-body">
+                    <p class="social-modal-text">
+                        Are you sure you want to remove <strong id="social-remove-friend-name">this friend</strong> from your friends list?
+                    </p>
+                    <div class="social-modal-actions">
+                        <button id="social-remove-friend-cancel" class="social-btn social-btn-secondary">
+                            <i class="bi bi-x"></i> Cancel
+                        </button>
+                        <button id="social-remove-friend-confirm" class="social-btn social-btn-danger">
+                            <i class="bi bi-person-dash"></i> Remove
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Account Modal -->
+        <div id="social-register-modal" class="social-modal" style="display: none;">
+        <div class="social-modal-content">
+            <div class="social-modal-header">
+                <h2 class="social-modal-title">Create Account</h2>
+                <button id="social-register-close" class="social-modal-close">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="social-modal-body">
+                <form id="social-register-form" class="social-form">
+                    <div class="social-form-group">
+                        <label for="social-register-username" class="social-label">Username</label>
+                        <input type="text" id="social-register-username" class="social-input" placeholder="Choose a username" required>
+                    </div>
+                    <div class="social-form-group">
+                        <label for="social-register-email" class="social-label">Email</label>
+                        <input type="email" id="social-register-email" class="social-input" placeholder="your.email@example.com" required>
+                    </div>
+                    <div class="social-form-group">
+                        <label for="social-register-password" class="social-label">Password</label>
+                        <input type="password" id="social-register-password" class="social-input" placeholder="Enter your password" required minlength="6">
+                        <small class="social-hint" style="margin-top: 4px; display: block;">Password must be at least 6 characters</small>
+                    </div>
+                    <div class="social-form-group">
+                        <label for="social-register-password-confirm" class="social-label">Confirm Password</label>
+                        <input type="password" id="social-register-password-confirm" class="social-input" placeholder="Confirm your password" required>
+                    </div>
+                    <button type="submit" class="social-btn social-btn-primary" style="width: 100%;">
+                        <i class="bi bi-person-plus"></i> Create Account
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profile Screen (shown after login) -->
+    <div id="social-profile-container" class="social-profile-container" style="display: none;">
+        <!-- Navigation Menu -->
+        <div class="social-nav-menu">
+            <div class="social-nav-item active" data-section="feed">
+                <i class="bi bi-compass"></i>
+                <span>Discover</span>
+            </div>
+            <div class="social-nav-item" data-section="my-mods">
+                <i class="bi bi-collection"></i>
+                <span>My Mods</span>
+            </div>
+            <div class="social-nav-item" data-section="friends">
+                <i class="bi bi-people"></i>
+                <span>Friends</span>
+            </div>
+            <div class="social-nav-item" data-section="profile">
+                <i class="bi bi-person"></i>
+                <span>Profile</span>
+            </div>
+        </div>
+
+        <!-- Content Sections -->
+        <div class="social-main-content">
+            <!-- Feed Section -->
+            <div id="social-section-feed" class="social-section active">
+                <div class="social-section-header">
+                    <h2 class="social-section-title">Discover Mods</h2>
+                    <p class="social-section-subtitle">Explore mods shared by the community</p>
+                </div>
+                <div id="social-feed-content" class="social-feed-content">
+                    <div class="social-loading">
+                        <i class="bi bi-hourglass-split"></i>
+                        <p>Loading mods...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Mods Section -->
+            <div id="social-section-my-mods" class="social-section">
+                <div class="social-section-header">
+                    <h2 class="social-section-title">My Mods</h2>
+                    <p class="social-section-subtitle">Manage your shared mods</p>
+                </div>
+                <div id="social-my-mods-content" class="social-mods-content">
+                    <div class="social-loading">
+                        <i class="bi bi-hourglass-split"></i>
+                        <p>Loading your mods...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Friends Section -->
+            <div id="social-section-friends" class="social-section">
+                <div class="social-section-header">
+                    <h2 class="social-section-title">Friends</h2>
+                    <p class="social-section-subtitle">Manage your friends and requests</p>
+                </div>
+                <div id="social-friends-content" class="social-friends-content">
+                    <!-- Friend Requests -->
+                    <div id="social-friend-requests-section" style="display: none;">
+                        <h3 class="social-friend-requests-title">Friend Requests</h3>
+                        <div id="social-friend-requests-list" class="social-friends-list"></div>
+                    </div>
+                    <!-- Friends List -->
+                    <div id="social-friends-list-section">
+                        <h3 class="social-friend-requests-title" style="margin-top: 24px;">Your Friends</h3>
+                        <div id="social-friends-list-container" class="social-friends-list">
+                            <div class="social-loading">
+                                <i class="bi bi-hourglass-split"></i>
+                                <p>Loading friends...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Profile View (other users) -->
+            <div id="social-section-user-profile" class="social-section">
+                <div class="social-section-header">
+                    <button id="social-back-btn" class="social-back-button">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </button>
+                    <div class="social-user-profile-header">
+                        <div class="social-user-profile-avatar-container">
+                            <img id="social-user-profile-avatar" class="social-user-profile-avatar" src="" alt="Profile">
+                        </div>
+                        <div class="social-user-profile-info">
+                            <h2 id="social-user-profile-username" class="social-user-profile-username">Loading...</h2>
+                            <div class="social-user-profile-stats">
+                                <div class="social-stat-item">
+                                    <span class="social-stat-value" id="social-user-stat-mods">0</span>
+                                    <span class="social-stat-label">Mods</span>
+                                </div>
+                            </div>
+                            <div class="social-user-profile-actions">
+                                <button id="social-add-friend-btn" class="social-btn social-btn-primary" style="display: none;">
+                                    <i class="bi bi-person-plus"></i> <span id="social-add-friend-text">Add Friend</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="social-user-mods-content" class="social-user-mods-content">
+                    <div class="social-loading">
+                        <i class="bi bi-hourglass-split"></i>
+                        <p>Loading user mods...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Section -->
+            <div id="social-section-profile" class="social-section">
+                <div class="social-profile-header">
+                    <div class="social-profile-avatar-container">
+                        <img id="social-profile-avatar" class="social-profile-avatar" src="" alt="Profile">
+                        <button id="social-profile-edit-avatar" class="social-profile-edit-avatar" title="Edit avatar">
+                            <i class="bi bi-camera"></i>
+                        </button>
+                    </div>
+                    <div class="social-profile-info">
+                        <h2 id="social-profile-username" class="social-profile-username">Loading...</h2>
+                        <p id="social-profile-email" class="social-profile-email">Loading...</p>
+                        <div class="social-profile-stats">
+                            <div class="social-stat-item">
+                                <span class="social-stat-value" id="social-stat-mods">0</span>
+                                <span class="social-stat-label">Mods</span>
+                            </div>
+                            <div class="social-stat-item">
+                                <span class="social-stat-value" id="social-stat-friends">0</span>
+                                <span class="social-stat-label">Friends</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="social-profile-content">
+            <div class="social-profile-section">
+                <h3 class="social-profile-section-title">Account Settings</h3>
+                <div class="social-profile-settings">
+                    <div class="social-setting-item">
+                        <label for="social-edit-username" class="social-setting-label">Username</label>
+                        <div class="social-setting-input-group">
+                            <input type="text" id="social-edit-username" class="social-setting-input" placeholder="Username">
+                            <button id="social-save-username" class="social-btn social-btn-secondary">
+                                <i class="bi bi-check"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="social-setting-item">
+                        <label class="social-setting-label">Privacy Settings</label>
+                        <div class="social-privacy-settings">
+                            <div class="social-privacy-option">
+                                <label for="social-privacy-visibility" class="social-privacy-label">Mods Visibility</label>
+                                <select id="social-privacy-visibility" class="social-setting-select">
+                                    <option value="global">Everyone</option>
+                                    <option value="friends">Friends Only</option>
+                                    <option value="none">Only Me</option>
+                                </select>
+                            </div>
+                            <div class="social-privacy-option">
+                                <label class="social-checkbox-label">
+                                    <input type="checkbox" id="social-privacy-sync" class="social-checkbox">
+                                    <span>Allow friends to sync my mods</span>
+                                </label>
+                            </div>
+                            <button id="social-save-privacy" class="social-btn social-btn-secondary">
+                                <i class="bi bi-check"></i> Save Privacy Settings
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="social-setting-item">
+                        <label class="social-setting-label">Auto-Download Settings</label>
+                        <div class="social-privacy-settings">
+                            <div class="social-privacy-option">
+                                <label class="social-checkbox-label">
+                                    <input type="checkbox" id="social-auto-download-enabled" class="social-checkbox">
+                                    <span>Enable automatic download check</span>
+                                </label>
+                            </div>
+                            <div class="social-privacy-option">
+                                <label for="social-auto-download-interval" class="social-privacy-label">Check interval (minutes)</label>
+                                <input type="number" id="social-auto-download-interval" class="social-setting-input" min="1" max="60" value="5">
+                            </div>
+                            <button id="social-save-auto-download" class="social-btn social-btn-secondary">
+                                <i class="bi bi-check"></i> Save Auto-Download Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                    <div class="social-profile-actions">
+                        <button id="social-logout-btn" class="social-btn social-btn-danger">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+
+
 
 
 

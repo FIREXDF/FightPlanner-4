@@ -1,17 +1,34 @@
 const path = require('path');
 const fs = require('fs');
+const { app } = require('electron');
+const AdmZip = require('adm-zip');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
+
+const CONFLICT_WHITELIST_PATTERNS = [
+    'ui_chara_db.prcxml',
+    'info.toml',
+    'preview.webp',
+    'msg_name.xmsbt',
+    'config.json',
+    'msg_bgm.xmsbt',
+    'ui_chara_db.prcx',
+    'plugin.nro',
+    'victory.toml',
+    'README.txt'
+];
 
 class ModUtils {
-    // Get disabled mods folder path from active mods folder
+
     static getDisabledModsFolder(activeModsPath) {
         const parentDir = path.dirname(activeModsPath);
         return path.join(parentDir, '{disabled_mod}');
     }
 
-    // Read all mods from a folder
     static readModsFromFolder(folderPath, status = 'active') {
         const mods = [];
-        
+
         if (!fs.existsSync(folderPath)) {
             console.log(`Folder does not exist: ${folderPath}`);
             return mods;
@@ -19,7 +36,7 @@ class ModUtils {
 
         try {
             const entries = fs.readdirSync(folderPath, { withFileTypes: true });
-            
+
             entries.forEach(entry => {
                 if (entry.isDirectory()) {
                     const modPath = path.join(folderPath, entry.name);
@@ -37,15 +54,14 @@ class ModUtils {
         return mods;
     }
 
-    // Get preview image path from mod folder
     static getPreviewImagePath(modFolderPath) {
         try {
             const previewPath = path.join(modFolderPath, 'preview.webp');
-            
+
             if (fs.existsSync(previewPath)) {
                 return previewPath;
             }
-            
+
             return null;
         } catch (error) {
             console.error('Error getting preview path:', error);
@@ -53,57 +69,49 @@ class ModUtils {
         }
     }
 
-    // Convert file path to file:// URL
     static pathToFileUrl(filePath) {
         if (!filePath) return null;
-        
-        // Normalize path and convert to forward slashes
+
         const normalizedPath = filePath.replace(/\\/g, '/');
         return 'file://' + normalizedPath;
     }
 
-    // Read and parse info.toml file from mod folder
     static readModInfo(modFolderPath) {
         try {
             const infoPath = path.join(modFolderPath, 'info.toml');
-            
+
             if (!fs.existsSync(infoPath)) {
                 return null;
             }
-            
+
             const content = fs.readFileSync(infoPath, 'utf8');
-            
-            // Simple TOML parser for our specific format
+
             const info = {};
             const lines = content.split('\n');
             let currentKey = null;
             let multilineValue = '';
             let inMultiline = false;
-            
+
             lines.forEach((line, index) => {
                 const originalLine = line;
                 line = line.trim();
-                
-                // Skip empty lines and comments when not in multiline
+
                 if (!inMultiline && (!line || line.startsWith('#'))) return;
-                
-                // Check for triple quotes (multiline delimiter)
+
                 const tripleQuoteCount = (line.match(/"""/g) || []).length;
-                
+
                 if (tripleQuoteCount > 0) {
                     if (!inMultiline) {
-                        // Starting multiline
                         const equalsIndex = line.indexOf('=');
                         if (equalsIndex !== -1) {
                             currentKey = line.substring(0, equalsIndex).trim();
                             inMultiline = true;
-                            
-                            // Check if closing """ is on same line
+
                             const afterEquals = line.substring(equalsIndex + 1).trim();
                             if (afterEquals === '"""') {
-                                // Empty multiline on same line, do nothing yet
+
                             } else if (tripleQuoteCount === 2) {
-                                // Single line multiline: key = """value"""
+
                                 const startQuote = afterEquals.indexOf('"""');
                                 const endQuote = afterEquals.lastIndexOf('"""');
                                 if (startQuote !== -1 && endQuote !== -1 && startQuote !== endQuote) {
@@ -114,7 +122,7 @@ class ModUtils {
                             }
                         }
                     } else {
-                        // Ending multiline
+
                         if (line === '"""' || line.endsWith('"""')) {
                             info[currentKey] = multilineValue.trim();
                             multilineValue = '';
@@ -123,23 +131,22 @@ class ModUtils {
                         }
                     }
                 } else if (inMultiline) {
-                    // Inside multiline string - preserve original spacing
+
                     multilineValue += originalLine + '\n';
                 } else if (line.includes('=')) {
-                    // Regular key-value pair
+
                     const equalsIndex = line.indexOf('=');
                     const key = line.substring(0, equalsIndex).trim();
                     let value = line.substring(equalsIndex + 1).trim();
-                    
-                    // Remove surrounding quotes
+
                     if (value.startsWith('"') && value.endsWith('"')) {
                         value = value.slice(1, -1);
                     }
-                    
+
                     info[key] = value;
                 }
             });
-            
+
             return info;
         } catch (error) {
             console.error('Error reading mod info:', error);
@@ -147,10 +154,9 @@ class ModUtils {
         }
     }
 
-    // Read all mods (active + disabled)
     static readAllMods(activeModsPath) {
         const activeMods = this.readModsFromFolder(activeModsPath, 'active');
-        
+
         const disabledModsPath = this.getDisabledModsFolder(activeModsPath);
         const disabledMods = this.readModsFromFolder(disabledModsPath, 'disabled');
 
@@ -163,39 +169,37 @@ class ModUtils {
         };
     }
 
-    // Scan mod folder for slot patterns (c00-c07)
     static scanModForSlots(modFolderPath) {
         const slots = {};
-        
+
         try {
             const slotPattern = /c0[0-7]/gi;
-            
-            // Recursive function to scan directories
+
             const scanDirectory = (dirPath, relativePath = '') => {
                 if (!fs.existsSync(dirPath)) return;
-                
+
                 const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-                
+
                 entries.forEach(entry => {
                     const fullPath = path.join(dirPath, entry.name);
                     const relPath = relativePath ? path.join(relativePath, entry.name) : entry.name;
-                    
+
                     if (entry.isDirectory()) {
-                        // Check if directory name contains c0X pattern
+
                         const matches = entry.name.match(slotPattern);
                         if (matches) {
-                            // Use Set to avoid duplicates
+
                             const uniqueSlots = new Set();
                             matches.forEach(match => {
                                 const slotNum = parseInt(match.toLowerCase().charAt(2));
                                 uniqueSlots.add(slotNum);
                             });
-                            
+
                             uniqueSlots.forEach(slotNum => {
                                 if (!slots[slotNum]) {
                                     slots[slotNum] = [];
                                 }
-                                // Check if not already added (avoid duplicates)
+
                                 const exists = slots[slotNum].some(item => item.path === relPath);
                                 if (!exists) {
                                     slots[slotNum].push({
@@ -207,15 +211,14 @@ class ModUtils {
                                 }
                             });
                         }
-                        
-                        // Always recursively scan subdirectories to find nested c0X files/folders
+
                         try {
                             scanDirectory(fullPath, relPath);
                         } catch (err) {
                             console.warn(`Cannot scan subdirectory ${relPath}:`, err.message);
                         }
                     } else if (entry.isFile()) {
-                        // Check if filename contains c0X pattern
+
                         const matches = entry.name.match(slotPattern);
                         if (matches) {
                             const uniqueSlots = new Set();
@@ -223,7 +226,7 @@ class ModUtils {
                                 const slotNum = parseInt(match.toLowerCase().charAt(2));
                                 uniqueSlots.add(slotNum);
                             });
-                            
+
                             uniqueSlots.forEach(slotNum => {
                                 if (!slots[slotNum]) {
                                     slots[slotNum] = [];
@@ -242,16 +245,15 @@ class ModUtils {
                     }
                 });
             };
-            
+
             console.log(`Scanning mod folder for slots: ${modFolderPath}`);
             scanDirectory(modFolderPath);
-            
-            // Convert to array format and sort
+
             const slotsArray = Object.keys(slots)
                 .map(slotNum => ({
                     slot: parseInt(slotNum),
                     files: slots[slotNum].sort((a, b) => {
-                        // Sort directories first, then by path
+
                         if (a.type !== b.type) {
                             return a.type === 'directory' ? -1 : 1;
                         }
@@ -259,9 +261,9 @@ class ModUtils {
                     })
                 }))
                 .sort((a, b) => a.slot - b.slot);
-            
+
             console.log(`Found ${slotsArray.length} different slot(s):`, slotsArray.map(s => `c0${s.slot} (${s.files.length} items)`).join(', '));
-            
+
             return slotsArray;
         } catch (error) {
             console.error('Error scanning mod for slots:', error);
@@ -269,39 +271,32 @@ class ModUtils {
         }
     }
 
-    // Apply slot changes to mod folder
     static applySlotChanges(modFolderPath, changes) {
         try {
             const modificationsMap = new Map();
-            
-            // Process modifications
+
             changes.modifications.forEach(mod => {
                 if (mod.type === 'change') {
                     modificationsMap.set(mod.originalSlot, mod.newSlot);
                 }
             });
-            
-            // To avoid conflicts when swapping slots, we need to rename in stages
-            // Use a unique temporary prefix that won't match c0X pattern
+
             const tempPrefix = 'TMPSLOT';
             const renamedPaths = [];
-            
-            // Phase 1: Rename all to temporary names (c0X -> TMPSLOT_X)
+
             modificationsMap.forEach((newSlot, originalSlot) => {
                 const tempName = `${tempPrefix}_${originalSlot}`;
                 const result = this.renameSlotInMod(modFolderPath, `c0${originalSlot}`, tempName);
                 renamedPaths.push(...result);
             });
-            
-            // Phase 2: Rename from temporary names to final names (TMPSLOT_X -> c0Y)
+
             modificationsMap.forEach((newSlot, originalSlot) => {
                 const tempName = `${tempPrefix}_${originalSlot}`;
                 this.renameSlotInMod(modFolderPath, tempName, `c0${newSlot}`);
             });
-            
-            // Update config.json if it exists
+
             this.updateConfigJsonSlots(modFolderPath, modificationsMap);
-            
+
             return { success: true };
         } catch (error) {
             console.error('Error applying slot changes:', error);
@@ -309,19 +304,16 @@ class ModUtils {
         }
     }
 
-    // Rename slot references in mod folder
     static renameSlotInMod(modFolderPath, oldPattern, newPattern) {
         const renamedPaths = [];
-        
-        // Escape special regex characters in the pattern
+
         const escapedPattern = oldPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        
-        // Create regex - match the pattern globally (case insensitive)
+
         const oldRegex = new RegExp(escapedPattern, 'gi');
-        
+
         const renameInDirectory = (dirPath) => {
             if (!fs.existsSync(dirPath)) return;
-            
+
             let entries;
             try {
                 entries = fs.readdirSync(dirPath, { withFileTypes: true });
@@ -329,23 +321,20 @@ class ModUtils {
                 console.warn(`Cannot read directory ${dirPath}:`, err.message);
                 return;
             }
-            
-            // Collect items to rename (process after recursion to avoid path issues)
+
             const itemsToRename = [];
-            
-            // Process files and directories
+
             entries.forEach(entry => {
                 const fullPath = path.join(dirPath, entry.name);
-                
+
                 if (entry.isDirectory()) {
-                    // Recursively process subdirectory FIRST (depth-first)
+
                     try {
                         renameInDirectory(fullPath);
                     } catch (err) {
                         console.warn(`Error processing subdirectory ${fullPath}:`, err.message);
                     }
-                    
-                    // Then check if directory itself needs renaming
+
                     if (entry.name.match(oldRegex)) {
                         itemsToRename.push({
                             oldPath: fullPath,
@@ -354,7 +343,7 @@ class ModUtils {
                         });
                     }
                 } else if (entry.isFile()) {
-                    // Check if file needs renaming
+
                     if (entry.name.match(oldRegex)) {
                         itemsToRename.push({
                             oldPath: fullPath,
@@ -364,20 +353,17 @@ class ModUtils {
                     }
                 }
             });
-            
-            // Now rename collected items (after subdirectory processing)
+
             itemsToRename.forEach(item => {
-                // Use a function to replace only the first occurrence or all if needed
-                // But protect already replaced patterns
+
                 let newName = item.oldName.replace(oldRegex, newPattern);
                 const newPath = path.join(dirPath, newName);
-                
-                // Only rename if target doesn't exist
+
                 if (!fs.existsSync(newPath)) {
                     try {
                         fs.renameSync(item.oldPath, newPath);
-                        renamedPaths.push({ 
-                            old: item.oldPath, 
+                        renamedPaths.push({
+                            old: item.oldPath,
                             new: newPath,
                             type: item.isDirectory ? 'directory' : 'file'
                         });
@@ -390,42 +376,346 @@ class ModUtils {
                 }
             });
         };
-        
+
         console.log(`Renaming pattern "${oldPattern}" to "${newPattern}" in ${modFolderPath}`);
         renameInDirectory(modFolderPath);
         console.log(`Renamed ${renamedPaths.length} item(s)`);
         return renamedPaths;
     }
 
-    // Update config.json with new slot references
     static updateConfigJsonSlots(modFolderPath, modificationsMap) {
         const configPath = path.join(modFolderPath, 'config.json');
-        
+
         if (!fs.existsSync(configPath)) {
             console.log('No config.json found - skipping');
             return;
         }
-        
+
         try {
             console.log('Updating config.json slot references...');
             const configContent = fs.readFileSync(configPath, 'utf8');
             let updatedContent = configContent;
-            
-            // Replace slot references in config.json (case-insensitive)
+
             modificationsMap.forEach((newSlot, originalSlot) => {
                 const oldPattern = `c0${originalSlot}`;
                 const newPattern = `c0${newSlot}`;
-                
-                // Replace both lowercase and uppercase versions
+
                 updatedContent = updatedContent.replace(new RegExp(oldPattern, 'gi'), newPattern);
                 updatedContent = updatedContent.replace(new RegExp(oldPattern.toUpperCase(), 'g'), newPattern.toUpperCase());
             });
-            
-            // Write updated config back
+
             fs.writeFileSync(configPath, updatedContent, 'utf8');
             console.log('config.json updated successfully');
         } catch (error) {
             console.error('Error updating config.json:', error);
+        }
+    }
+
+    static detectConflicts(activeMods, whitelistPatterns = []) {
+        const conflicts = [];
+        const fileToMods = new Map();
+        
+        const allPatterns = [...CONFLICT_WHITELIST_PATTERNS, ...whitelistPatterns];
+
+        activeMods.forEach((mod, modIndex) => {
+            if (!mod.path || !fs.existsSync(mod.path)) return;
+
+            const scanMod = (dirPath, relativePath = '') => {
+                if (!fs.existsSync(dirPath)) return;
+
+                try {
+                    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+                    entries.forEach(entry => {
+                        const fullPath = path.join(dirPath, entry.name);
+                        const relPath = relativePath ? path.join(relativePath, entry.name) : entry.name;
+
+                        if (allPatterns.some(pattern => {
+                            if (typeof pattern === 'string') {
+                                return relPath.includes(pattern);
+                            }
+                            return false;
+                        })) {
+                            return;
+                        }
+
+                        if (entry.isDirectory()) {
+                            try {
+                                scanMod(fullPath, relPath);
+                            } catch (err) {
+                            }
+                        } else if (entry.isFile()) {
+                            const normalizedPath = relPath.replace(/\\/g, '/');
+                            
+                            if (!fileToMods.has(normalizedPath)) {
+                                fileToMods.set(normalizedPath, []);
+                            }
+                            fileToMods.get(normalizedPath).push({
+                                modIndex,
+                                modName: mod.name,
+                                modPath: mod.path,
+                                filePath: normalizedPath
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.warn(`Error scanning directory ${dirPath}:`, error.message);
+                }
+            };
+
+            scanMod(mod.path);
+        });
+
+        fileToMods.forEach((modsList, filePath) => {
+            if (modsList.length > 1) {
+                conflicts.push({
+                    filePath: filePath,
+                    mods: modsList.map(m => ({
+                        name: m.modName,
+                        path: m.modPath
+                    }))
+                });
+            }
+        });
+
+        return conflicts;
+    }
+
+    static async extractArchive(archivePath, targetPath) {
+        try {
+            console.log("Extracting archive file...");
+            console.log("Source:", archivePath);
+            console.log("Destination:", targetPath);
+
+            if (!fs.existsSync(archivePath)) {
+                throw new Error("Archive file does not exist: " + archivePath);
+            }
+
+            if (!fs.existsSync(targetPath)) {
+                fs.mkdirSync(targetPath, { recursive: true });
+            }
+
+            const ext = path.extname(archivePath).toLowerCase();
+            let extracted = false;
+            let lastError = null;
+
+            // Try 7-Zip first (supports zip, rar, 7z, etc.)
+            if (process.platform === "win32") {
+                try {
+                    await this.extract7Zip(archivePath, targetPath);
+                    console.log("✓ Extracted using 7-Zip");
+                    extracted = true;
+                } catch (err) {
+                    console.warn("7-Zip extraction failed:", err.message);
+                    lastError = err;
+                }
+            }
+
+            // Try system unzip (for zip files on non-Windows)
+            if (!extracted && process.platform !== "win32" && (ext === '.zip')) {
+                try {
+                    await this.extractUnzip(archivePath, targetPath);
+                    console.log("✓ Extracted using system unzip");
+                    extracted = true;
+                } catch (err) {
+                    console.warn("System unzip failed:", err.message);
+                    lastError = err;
+                }
+            }
+
+            // Fallback to adm-zip for zip files
+            if (!extracted && ext === '.zip') {
+                try {
+                    const zip = new AdmZip(archivePath);
+                    zip.extractAllTo(targetPath, true);
+                    console.log("✓ Extracted using adm-zip (fallback)");
+                    extracted = true;
+                } catch (err) {
+                    console.error("adm-zip extraction failed:", err.message);
+                    lastError = err;
+                }
+            }
+
+            if (!extracted) {
+                throw lastError || new Error("All extraction methods failed");
+            }
+
+            const extractedFiles = fs.readdirSync(targetPath);
+            console.log("Extracted files/folders:", extractedFiles);
+
+            if (extractedFiles.length === 0) {
+                throw new Error("Archive extraction resulted in no files");
+            }
+        } catch (error) {
+            console.error("Archive extraction failed:", error);
+            throw new Error(`Failed to extract archive: ${error.message}`);
+        }
+    }
+
+    static async extract7Zip(archivePath, targetPath) {
+        let command;
+
+        if (process.platform === "win32") {
+            const bundled7z = path.join(__dirname, "../../tools/7za.exe");
+
+            if (fs.existsSync(bundled7z)) {
+                command = `"${bundled7z}" x "${archivePath}" -o"${targetPath}" -y`;
+            } else {
+                command = `7z x "${archivePath}" -o"${targetPath}" -y`;
+            }
+        } else {
+            command = `7z x "${archivePath}" -o"${targetPath}" -y`;
+        }
+
+        console.log("[extract] 7z command:", command);
+        const { stdout, stderr } = await execAsync(command);
+
+        if (stderr && !stderr.includes("Everything is Ok")) {
+            console.warn("7z stderr:", stderr);
+        }
+
+        console.log("[extract] 7z output:", stdout);
+    }
+
+    static async extractUnzip(archivePath, targetPath) {
+        const command = `unzip -o "${archivePath}" -d "${targetPath}"`;
+        console.log("[extract] unzip command:", command);
+
+        const { stdout, stderr } = await execAsync(command);
+
+        if (stderr) {
+            console.warn("unzip stderr:", stderr);
+        }
+
+        console.log("[extract] unzip output:", stdout);
+    }
+
+    static copyRecursiveSync(src, dest) {
+        const exists = fs.existsSync(src);
+        const stats = exists && fs.statSync(src);
+        const isDirectory = exists && stats.isDirectory();
+
+        if (isDirectory) {
+            if (!fs.existsSync(dest)) {
+                fs.mkdirSync(dest, { recursive: true });
+            }
+
+            fs.readdirSync(src).forEach((childItemName) => {
+                this.copyRecursiveSync(
+                    path.join(src, childItemName),
+                    path.join(dest, childItemName)
+                );
+            });
+        } else {
+            fs.copyFileSync(src, dest);
+        }
+    }
+
+    static async installModFromPath(sourcePath, modsPath) {
+        try {
+            if (!fs.existsSync(sourcePath)) {
+                throw new Error(`Source path does not exist: ${sourcePath}`);
+            }
+
+            if (!modsPath) {
+                throw new Error("Mods folder not configured. Please set it in Settings.");
+            }
+
+            if (!fs.existsSync(modsPath)) {
+                throw new Error("Mods folder does not exist");
+            }
+
+            const stats = fs.statSync(sourcePath);
+            const isDirectory = stats.isDirectory();
+            const ext = path.extname(sourcePath).toLowerCase();
+            const isArchive = ['.zip', '.rar', '.7z', '.tar', '.gz'].includes(ext);
+
+            let tempExtractDir = null;
+            let extractedItems = [];
+            let modFolderName = null;
+
+            // If it's an archive, extract it first
+            if (isArchive) {
+                console.log("Installing mod from archive:", sourcePath);
+                tempExtractDir = path.join(
+                    app.getPath("temp"),
+                    "fightplanner-extract",
+                    `mod-${Date.now()}`
+                );
+                if (!fs.existsSync(tempExtractDir)) {
+                    fs.mkdirSync(tempExtractDir, { recursive: true });
+                }
+
+                await this.extractArchive(sourcePath, tempExtractDir);
+                extractedItems = fs.readdirSync(tempExtractDir);
+                console.log("Extracted items:", extractedItems);
+
+                // Determine mod folder name
+                if (
+                    extractedItems.length === 1 &&
+                    fs.statSync(path.join(tempExtractDir, extractedItems[0])).isDirectory()
+                ) {
+                    modFolderName = extractedItems[0];
+                } else {
+                    modFolderName = path.basename(sourcePath, ext);
+                }
+            } else if (isDirectory) {
+                // If it's a directory, use it directly
+                console.log("Installing mod from directory:", sourcePath);
+                modFolderName = path.basename(sourcePath);
+            } else {
+                throw new Error("Source path must be an archive file (.zip, .rar, .7z, etc.) or a directory");
+            }
+
+            const finalModPath = path.join(modsPath, modFolderName);
+
+            // Remove existing mod if it exists
+            if (fs.existsSync(finalModPath)) {
+                console.log("Mod already exists, removing old version");
+                fs.rmSync(finalModPath, { recursive: true, force: true });
+            }
+
+            // Copy or move the mod
+            if (isArchive) {
+                const sourceModPath = path.join(tempExtractDir, modFolderName);
+                if (fs.existsSync(sourceModPath)) {
+                    console.log("Copying mod from temp to mods folder...");
+                    this.copyRecursiveSync(sourceModPath, finalModPath);
+                } else {
+                    // Multiple items extracted, copy all
+                    console.log("Copying multiple items to mods folder...");
+                    this.copyRecursiveSync(tempExtractDir, finalModPath);
+                }
+            } else {
+                // For directories, move instead of copy to avoid duplication
+                console.log("Moving mod directory to mods folder...");
+                fs.renameSync(sourcePath, finalModPath);
+            }
+
+            // Cleanup temp directory
+            if (tempExtractDir && fs.existsSync(tempExtractDir)) {
+                try {
+                    fs.rmSync(tempExtractDir, { recursive: true, force: true });
+                } catch (err) {
+                    console.warn("Failed to cleanup temp directory:", err.message);
+                }
+            }
+
+            // Delete original archive file after successful installation
+            if (isArchive && fs.existsSync(sourcePath)) {
+                try {
+                    fs.unlinkSync(sourcePath);
+                    console.log("Deleted original archive file");
+                } catch (err) {
+                    console.warn("Failed to delete original archive:", err.message);
+                }
+            }
+
+            console.log("Mod installed successfully to:", finalModPath);
+            return { success: true, modPath: finalModPath, modName: modFolderName };
+        } catch (error) {
+            console.error("Error installing mod from path:", error);
+            return { success: false, error: error.message };
         }
     }
 }
