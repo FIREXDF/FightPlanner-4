@@ -5,6 +5,7 @@
         <button class="settings-tab-btn active" data-settings-tab="general">General</button>
         <button class="settings-tab-btn" data-settings-tab="mods">Paths</button>
         <button class="settings-tab-btn" data-settings-tab="advanced">Advanced</button>
+        <button class="settings-tab-btn" data-settings-tab="customization">Customization</button>
         <button class="settings-tab-btn" data-settings-tab="logs">Logs</button>
     </div>
 
@@ -69,6 +70,18 @@
                 </button>
                 <p class="settings-hint">Opens a transparent window with the full tutorial animation</p>
             </div>
+
+            <div class="settings-section">
+                <label class="settings-label">1-Click Install Confirmation</label>
+                <div class="settings-input-group">
+                    <label class="settings-switch">
+                        <input type="checkbox" id="install-confirm-enabled" checked>
+                        <span class="settings-switch-slider"></span>
+                    </label>
+                    <span style="margin-left: 12px; color: #cccccc;">Show confirmation before downloading</span>
+                </div>
+                <p class="settings-hint">Display a modal to confirm mod downloads from browser links</p>
+            </div>
         </div>
 
         <!-- Paths Settings -->
@@ -123,6 +136,73 @@
                     <span style="margin-left: 12px; color: #cccccc;">Enable automatic conflict detection</span>
                 </div>
                 <p class="settings-hint">Automatically check for file conflicts between mods</p>
+            </div>
+
+            <div class="settings-section">
+                <label class="settings-label">Temporary Files</label>
+                <button class="settings-btn-action" id="clear-temp-files-btn">
+                    <i class="bi bi-trash3"></i>
+                    <div class="settings-btn-action-content">
+                        <span class="settings-btn-action-title">Clear Temporary Files</span>
+                        <span class="settings-btn-action-desc">Remove temporary download and extraction files</span>
+                    </div>
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+                <p class="settings-hint">Clears temporary files left from mod downloads and installations. Safe to use at any time.</p>
+            </div>
+        </div>
+
+        <!-- Customization Settings -->
+        <div class="settings-tab-content" id="settings-customization">
+            <h2 class="settings-title">Customization</h2>
+            
+            <div class="settings-section">
+                <label class="settings-label">Custom CSS Files</label>
+                <p class="settings-hint">Load custom CSS files to modify the appearance of FightPlanner</p>
+                <div class="settings-input-group">
+                    <button class="settings-btn" id="add-custom-css">
+                        <i class="bi bi-plus-circle"></i> Add CSS File
+                    </button>
+                    <button class="settings-btn" id="reload-all-css">
+                        <i class="bi bi-arrow-clockwise"></i> Reload All
+                    </button>
+                </div>
+                <div id="custom-css-list" class="custom-files-list">
+                    <!-- CSS files will be listed here -->
+                </div>
+                <p class="settings-hint" style="margin-top: 12px;">
+                    <i class="bi bi-info-circle"></i> Custom CSS files will be applied in order, on top of the default styles
+                </p>
+            </div>
+
+            <div class="settings-section">
+                <label class="settings-label">Custom JavaScript Files</label>
+                <p class="settings-hint">Load custom JavaScript files to extend FightPlanner functionality</p>
+                <div class="settings-input-group">
+                    <button class="settings-btn" id="add-custom-js">
+                        <i class="bi bi-plus-circle"></i> Add JS File
+                    </button>
+                </div>
+                <div id="custom-js-list" class="custom-files-list">
+                    <!-- JS files will be listed here -->
+                </div>
+                <p class="settings-hint" style="margin-top: 12px; color: #ff9800;">
+                    <i class="bi bi-exclamation-triangle-fill"></i> <strong>Warning:</strong> Only load JavaScript from trusted sources. Malicious code can harm your system.
+                </p>
+            </div>
+
+            <div class="settings-section" style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%); border-color: rgba(255, 152, 0, 0.2);">
+                <label class="settings-label" style="color: #ff9800;">
+                    <i class="bi bi-shield-exclamation"></i> Security Notice
+                </label>
+                <p style="color: #cccccc; line-height: 1.6; margin-bottom: 12px;">
+                    Custom CSS and JavaScript files have full access to the application. Only use files from developers you trust.
+                </p>
+                <ul style="color: #aaaaaa; margin-left: 20px; line-height: 1.8;">
+                    <li><strong>CSS</strong> can modify the visual appearance and layout</li>
+                    <li><strong>JavaScript</strong> can access all application features and data</li>
+                    <li>Changes take effect after reloading or restarting the app</li>
+                </ul>
             </div>
         </div>
 

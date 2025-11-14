@@ -1,11 +1,17 @@
 class ModInfoManager {
-  constructor() {}
+  constructor() {
+    this.currentModPath = null;
+    this.currentModData = null;
+  }
 
   getContainer() {
     return document.getElementById("mod-info-content");
   }
 
-  displayModInfo(modData) {
+  displayModInfo(modData, modPath = null) {
+    this.currentModData = modData;
+    this.currentModPath = modPath;
+
     const container = this.getContainer();
     if (!container) {
       console.error("Container not found! Make sure the tab is loaded.");
@@ -91,6 +97,11 @@ ${escapeHtml(modData.url)}
     container.style.animation = "";
 
     container.innerHTML = html;
+
+    const editBtn = document.getElementById("edit-info-btn");
+    if (editBtn && modPath) {
+      editBtn.style.display = "flex";
+    }
   }
 
   clearModInfo() {
@@ -98,18 +109,36 @@ ${escapeHtml(modData.url)}
     if (!container) return;
     container.innerHTML =
       '<p class="mod-info-placeholder">Select a mod to view details</p>';
+    
+    this.currentModPath = null;
+    this.currentModData = null;
+    
+    const editBtn = document.getElementById("edit-info-btn");
+    if (editBtn) {
+      editBtn.style.display = "none";
+    }
   }
 
   showLoading() {
     const container = this.getContainer();
     if (!container) return;
     container.innerHTML = '<p class="mod-info-placeholder">Loading...</p>';
+    
+    const editBtn = document.getElementById("edit-info-btn");
+    if (editBtn) {
+      editBtn.style.display = "none";
+    }
   }
 
   showError(message) {
     const container = this.getContainer();
     if (!container) return;
     container.innerHTML = `<p class="mod-info-placeholder" style="color: #ff4444;">${message}</p>`;
+    
+    const editBtn = document.getElementById("edit-info-btn");
+    if (editBtn) {
+      editBtn.style.display = "none";
+    }
   }
 }
 

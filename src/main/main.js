@@ -6,9 +6,11 @@ const PluginUtils = require('./plugin-utils');
 const store = require('./store');
 const packageJson = require('../../package.json');
 const { initializeProtocol, getProtocolHandler } = require('./main-protocol-setup');
+const ProtocolHandler = require('./protocol-handler');
 const { createTutorialWindow, closeTutorialWindow } = require('./tutorial-window');
 const { migrateFromV3, getMigrationStatus } = require('./migration');
 const FTPClient = require('./ftp-client');
+const DiscordRPCManager = require('./discord-rpc');
 
 // Log file setup
 const logsDir = path.join(app.getPath('userData'), 'logs');
@@ -25,6 +27,7 @@ const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 
 let mainWindow = null;
+let discordRPC = null;
 
 function writeLog(level, args) {
   const timestamp = new Date().toISOString();
@@ -138,21 +141,7 @@ function createWindow() {
     }
   };
 
-  mainWindow.on('drop-files', (event, filePaths) => {
-    event.preventDefault();
-    console.log('Drop-files event triggered:', filePaths, 'isToolsTabActive:', isToolsTabActive);
-    if (isToolsTabActive) {
-      handleWindowDropFiles(filePaths);
-    } else {
-      console.log('Drop ignored - Tools tab is not active');
-    }
-  });
 
-  mainWindow.on('dragover', (event) => {
-    if (isToolsTabActive) {
-      event.preventDefault();
-    }
-  });
 
   // Also listen for drop event at window level
   mainWindow.webContents.on('dom-ready', () => {
@@ -169,6 +158,20 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+
+  if (!discordRPC) {
+    discordRPC = new DiscordRPCManager();
+    discordRPC.connect().catch(err => {
+      console.warn('Could not connect to Discord:', err.message);
+    });
+  }
+
+  mainWindow.on('closed', () => {
+    if (discordRPC) {
+      discordRPC.disconnect();
+      discordRPC = null;
+    }
+  });
 
   initializeProtocol(mainWindow);
 
@@ -231,6 +234,69 @@ function createWindow() {
     } catch (error) {
       console.error('Error getting mod info:', error);
       return null;
+    }
+  });
+
+  ipcMain.handle('save-mod-info', async (event, modPath, infoData) => {
+    try {
+      const infoPath = path.join(modPath, 'info.toml');
+      let tomlContent = '';
+
+      if (infoData.display_name) {
+        tomlContent += `display_name = "${infoData.display_name}"\n`;
+      }
+      if (infoData.authors) {
+        tomlContent += `authors = "${infoData.authors}"\n`;
+      }
+      if (infoData.version) {
+        tomlContent += `version = "${infoData.version}"\n`;
+      }
+      if (infoData.category) {
+        tomlContent += `category = "${infoData.category}"\n`;
+      }
+      if (infoData.url) {
+        tomlContent += `url = "${infoData.url}"\n`;
+      }
+      if (infoData.description) {
+        tomlContent += `description = """\n${infoData.description}\n"""\n`;
+      }
+
+      fs.writeFileSync(infoPath, tomlContent, 'utf8');
+      console.log('info.toml saved successfully:', infoPath);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving mod info:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('read-mod-info-raw', async (event, modPath) => {
+    try {
+      const infoPath = path.join(modPath, 'info.toml');
+      
+      if (!fs.existsSync(infoPath)) {
+        return '';
+      }
+
+      const content = fs.readFileSync(infoPath, 'utf8');
+      return content;
+    } catch (error) {
+      console.error('Error reading raw mod info:', error);
+      return '';
+    }
+  });
+
+  ipcMain.handle('save-mod-info-raw', async (event, modPath, tomlContent) => {
+    try {
+      const infoPath = path.join(modPath, 'info.toml');
+      fs.writeFileSync(infoPath, tomlContent, 'utf8');
+      console.log('info.toml saved successfully (raw):', infoPath);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving raw mod info:', error);
+      return { success: false, error: error.message };
     }
   });
 
@@ -710,6 +776,206 @@ ipcMain.handle('read-log-file', async (event, filePath) => {
   }
 });
 
+ipcMain.handle('select-custom-file', async (event, fileType) => {
+  try {
+    const filters = fileType === 'css' 
+      ? [{ name: 'CSS Files', extensions: ['css'] }]
+      : [{ name: 'JavaScript Files', extensions: ['js'] }];
+
+    const result = await dialog.showOpenDialog({
+      title: `Select Custom ${fileType.toUpperCase()} File`,
+      properties: ['openFile'],
+      filters: filters
+    });
+
+    if (result.canceled) {
+      return { canceled: true };
+    }
+
+    return { 
+      success: true, 
+      filePath: result.filePaths[0],
+      canceled: false 
+    };
+  } catch (error) {
+    console.error('Error selecting custom file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('read-custom-file', async (event, filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      throw new Error('File does not exist');
+    }
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    return { success: true, content };
+  } catch (error) {
+    console.error('Error reading custom file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('clear-temp-files', async () => {
+  try {
+    const tempPath = app.getPath('temp');
+    const foldersToClean = ['fightplanner-downloads', 'fightplanner-extract'];
+    
+    let deletedFiles = 0;
+    let deletedFolders = 0;
+    let totalSize = 0;
+
+    for (const folderName of foldersToClean) {
+      const folderPath = path.join(tempPath, folderName);
+      
+      if (fs.existsSync(folderPath)) {
+        const calculateSize = (dirPath) => {
+          let size = 0;
+          try {
+            const items = fs.readdirSync(dirPath);
+            for (const item of items) {
+              const itemPath = path.join(dirPath, item);
+              const stats = fs.statSync(itemPath);
+              if (stats.isDirectory()) {
+                size += calculateSize(itemPath);
+                deletedFolders++;
+              } else {
+                size += stats.size;
+                deletedFiles++;
+              }
+            }
+          } catch (err) {
+            console.warn('Error calculating size:', err);
+          }
+          return size;
+        };
+
+        totalSize += calculateSize(folderPath);
+
+        try {
+          fs.rmSync(folderPath, { recursive: true, force: true });
+          console.log(`Cleaned temporary folder: ${folderPath}`);
+        } catch (err) {
+          console.warn(`Failed to delete ${folderPath}:`, err.message);
+        }
+      }
+    }
+
+    const sizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+
+    return {
+      success: true,
+      deletedFiles,
+      deletedFolders,
+      totalSize: sizeMB
+    };
+  } catch (error) {
+    console.error('Error clearing temp files:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.on('discord-rpc-update', (event, data) => {
+  console.log('Received discord-rpc-update:', data);
+  
+  if (!discordRPC) {
+    console.warn('Discord RPC manager not initialized');
+    return;
+  }
+
+  const { tab, modCount } = data;
+
+  switch (tab) {
+    case 'tools':
+      console.log(`Setting Mods tab with ${modCount} mods`);
+      discordRPC.setModsTab(modCount || 0);
+      break;
+    case 'plugins':
+      console.log('Setting Plugins tab');
+      discordRPC.setPluginsTab();
+      break;
+    case 'characters':
+      console.log('Setting Characters tab');
+      discordRPC.setCharactersTab();
+      break;
+    case 'downloads':
+      console.log('Setting Downloads tab');
+      discordRPC.setDownloadsTab();
+      break;
+    case 'social':
+      console.log('Setting Social tab');
+      discordRPC.setSocialTab();
+      break;
+    case 'settings':
+      console.log('Setting Settings tab');
+      discordRPC.setSettingsTab();
+      break;
+    default:
+      console.log('Setting Idle state');
+      discordRPC.setIdleState();
+      break;
+  }
+});
+
+ipcMain.handle('confirm-protocol-install', async (event, url, downloadId) => {
+  const protocolHandler = getProtocolHandler();
+  if (protocolHandler) {
+    await protocolHandler.proceedWithInstall(downloadId);
+    return { success: true };
+  }
+  return { success: false, error: 'Protocol handler not available' };
+});
+
+ipcMain.handle('cancel-protocol-install', async (event, downloadId) => {
+  const protocolHandler = getProtocolHandler();
+  if (protocolHandler && protocolHandler.pendingInstalls) {
+    protocolHandler.pendingInstalls.delete(downloadId);
+    return { success: true };
+  }
+  return { success: false };
+});
+
+ipcMain.handle('fetch-gamebanana-preview', async (event, modId) => {
+  try {
+    const https = require('https');
+    const apiUrl = `https://gamebanana.com/apiv11/Mod/${modId}?_csvProperties=%40gbprofile`;
+    
+    return new Promise((resolve, reject) => {
+      https.get(apiUrl, (res) => {
+        let data = '';
+        
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            
+            if (json._aPreviewMedia && json._aPreviewMedia._aImages && json._aPreviewMedia._aImages.length > 0) {
+              const firstImage = json._aPreviewMedia._aImages[0];
+              if (firstImage._sBaseUrl && firstImage._sFile) {
+                const imageUrl = firstImage._sBaseUrl + "/" + firstImage._sFile;
+                resolve({ success: true, imageUrl });
+                return;
+              }
+            }
+            
+            resolve({ success: false, error: 'No preview image found' });
+          } catch (error) {
+            resolve({ success: false, error: error.message });
+          }
+        });
+      }).on('error', (error) => {
+        resolve({ success: false, error: error.message });
+      });
+    });
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
@@ -760,7 +1026,18 @@ if (!gotTheLock) {
   });
 
   app.on('window-all-closed', function () {
+    if (discordRPC) {
+      discordRPC.disconnect();
+      discordRPC = null;
+    }
     if (process.platform !== 'darwin') app.quit();
+  });
+  
+  app.on('quit', () => {
+    if (discordRPC) {
+      discordRPC.disconnect();
+      discordRPC = null;
+    }
   });
 }
 

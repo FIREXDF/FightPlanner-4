@@ -1,0 +1,765 @@
+class CustomizationManager {
+  constructor() {
+    this.pendingJsPath = null;
+    this.customCssFiles = []; // Array of {path, element}
+    this.customJsFiles = []; // Array of {path, element}
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this.initialize());
+    } else {
+      this.initialize();
+    }
+  }
+
+  async initialize() {
+    await this.loadSavedCustomizations();
+    
+    setTimeout(() => {
+      this.setupEventListeners();
+    }, 500);
+  }
+
+  setupEventListeners() {
+    console.log('Setting up customization event listeners...');
+    
+    // Render lists
+    this.renderCssList();
+    this.renderJsList();
+    
+    const addCssBtn = document.getElementById('add-custom-css');
+    if (addCssBtn && !addCssBtn.dataset.listenerAttached) {
+      addCssBtn.addEventListener('click', () => this.addCustomCss());
+      addCssBtn.dataset.listenerAttached = 'true';
+    }
+
+    const addJsBtn = document.getElementById('add-custom-js');
+    if (addJsBtn && !addJsBtn.dataset.listenerAttached) {
+      addJsBtn.addEventListener('click', () => this.addCustomJs());
+      addJsBtn.dataset.listenerAttached = 'true';
+    }
+
+    const reloadAllCssBtn = document.getElementById('reload-all-css');
+    if (reloadAllCssBtn && !reloadAllCssBtn.dataset.listenerAttached) {
+      reloadAllCssBtn.addEventListener('click', () => this.reloadAllCss());
+      reloadAllCssBtn.dataset.listenerAttached = 'true';
+    }
+    
+    console.log('Customization event listeners setup complete');
+  }
+
+  async loadSavedCustomizations() {
+    console.log('Loading saved customizations...');
+    
+    if (!window.electronAPI) {
+      console.warn('electronAPI not available yet, retrying...');
+      setTimeout(() => this.loadSavedCustomizations(), 500);
+      return;
+    }
+    
+    if (!window.electronAPI.store) {
+      console.warn('store not available yet, retrying...');
+      setTimeout(() => this.loadSavedCustomizations(), 500);
+      return;
+    }
+
+    try {
+      const customCssPaths = await window.electronAPI.store.get('customCssPaths') || [];
+      const customJsPaths = await window.electronAPI.store.get('customJsPaths') || [];
+
+      console.log('Saved CSS paths:', customCssPaths);
+      console.log('Saved JS paths:', customJsPaths);
+
+      for (const cssPath of customCssPaths) {
+        console.log('Loading custom CSS from:', cssPath);
+        await this.loadCustomCssFile(cssPath);
+      }
+
+      for (const jsPath of customJsPaths) {
+        console.log('Loading custom JS from:', jsPath);
+        await this.loadCustomJsFile(jsPath);
+      }
+      
+      console.log('All customizations loaded');
+    } catch (error) {
+      console.error('Error loading saved customizations:', error);
+    }
+  }
+
+  async addCustomCss() {
+    console.log('Add CSS clicked');
+    if (!window.electronAPI || !window.electronAPI.selectCustomFile) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.selectCustomFile('css');
+      
+      if (result.canceled || !result.filePath) {
+        return;
+      }
+
+      // Check if already added
+      if (this.customCssFiles.find(f => f.path === result.filePath)) {
+        if (window.toastManager) {
+          window.toastManager.warning('This CSS file is already loaded');
+        }
+        return;
+      }
+
+      await this.loadCustomCssFile(result.filePath);
+      await this.saveCssPaths();
+      this.renderCssList();
+
+      if (window.toastManager) {
+        window.toastManager.success('Custom CSS added successfully');
+      }
+    } catch (error) {
+      console.error('Error adding custom CSS:', error);
+      if (window.toastManager) {
+        window.toastManager.error('Failed to add custom CSS');
+      }
+    }
+  }
+
+  async addCustomJs() {
+    console.log('Add JS clicked');
+    if (!window.electronAPI || !window.electronAPI.selectCustomFile) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.selectCustomFile('js');
+      
+      if (result.canceled || !result.filePath) {
+        return;
+      }
+
+      // Check if already added
+      if (this.customJsFiles.find(f => f.path === result.filePath)) {
+        if (window.toastManager) {
+          window.toastManager.warning('This JavaScript file is already loaded');
+        }
+        return;
+      }
+
+      this.pendingJsPath = result.filePath;
+      this.showJsWarningModal();
+    } catch (error) {
+      console.error('Error adding custom JS:', error);
+      if (window.toastManager) {
+        window.toastManager.error('Failed to select JavaScript file');
+      }
+    }
+  }
+
+  async browseCustomCss() {
+    if (!window.electronAPI || !window.electronAPI.selectCustomFile) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.selectCustomFile('css');
+      
+      if (result.canceled || !result.filePath) {
+        return;
+      }
+
+      await this.loadCustomCss(result.filePath);
+      await window.electronAPI.store.set('customCssPath', result.filePath);
+      this.savedCssPath = result.filePath;
+      this.updateCssPathUI(result.filePath);
+
+      if (window.toastManager) {
+        window.toastManager.success('Custom CSS loaded successfully');
+      }
+    } catch (error) {
+      console.error('Error browsing custom CSS:', error);
+      if (window.toastManager) {
+        window.toastManager.error('Failed to load custom CSS');
+      }
+    }
+  }
+
+  async browseCustomJs() {
+    if (!window.electronAPI || !window.electronAPI.selectCustomFile) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.selectCustomFile('js');
+      
+      if (result.canceled || !result.filePath) {
+        return;
+      }
+
+      this.pendingJsPath = result.filePath;
+      this.showJsWarningModal();
+    } catch (error) {
+      console.error('Error browsing custom JS:', error);
+      if (window.toastManager) {
+        window.toastManager.error('Failed to select JavaScript file');
+      }
+    }
+  }
+
+  showJsWarningModal() {
+    if (!window.modalManager) {
+      console.error('Modal manager not available');
+      return;
+    }
+
+    const message = `
+      <div style="background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+        <p style="color: #ff9800; font-weight: 600; margin-bottom: 8px;">
+          <i class="bi bi-exclamation-triangle-fill"></i> Warning: Potentially Dangerous Operation
+        </p>
+        <p style="color: #cccccc; line-height: 1.6;">
+          You are about to load a custom JavaScript file. This file will have <strong>full access</strong> to FightPlanner and can:
+        </p>
+      </div>
+      <ul style="color: #aaaaaa; margin-left: 20px; line-height: 1.8; margin-bottom: 20px;">
+        <li>Access and modify all your application data</li>
+        <li>Read and write files on your system</li>
+        <li>Execute arbitrary code with your user permissions</li>
+        <li>Send data to external servers</li>
+        <li>Potentially install malware or steal information</li>
+      </ul>
+      <p style="color: #cccccc; line-height: 1.6; margin-bottom: 16px;">
+        <strong>Only proceed if:</strong>
+      </p>
+      <ul style="color: #4caf50; margin-left: 20px; line-height: 1.8; margin-bottom: 20px;">
+        <li>You trust the developer who created this file</li>
+        <li>The file comes from a reputable source</li>
+        <li>You have reviewed the code yourself</li>
+      </ul>
+      <div style="background: rgba(244, 67, 54, 0.1); border: 1px solid rgba(244, 67, 54, 0.3); border-radius: 8px; padding: 12px;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #cccccc;">
+          <input type="checkbox" id="js-warning-understand-checkbox" style="width: 18px; height: 18px; cursor: pointer;">
+          <span>I understand the risks and trust this JavaScript file</span>
+        </label>
+      </div>
+    `;
+
+    this.showCustomModal('Security Warning', message, async () => {
+      await this.confirmLoadJs();
+    }, true);
+  }
+
+  showCustomModal(title, message, onConfirm, requireCheckbox = false) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'custom-warning-modal';
+    
+    const headerStyle = requireCheckbox 
+      ? 'background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.1) 100%); border-bottom-color: rgba(255, 152, 0, 0.3);'
+      : '';
+    
+    const titleIcon = requireCheckbox 
+      ? '<i class="bi bi-shield-exclamation" style="color: #ff9800;"></i>'
+      : '<i class="bi bi-info-circle"></i>';
+
+    modal.innerHTML = `
+      <div class="modal-header" style="${headerStyle}">
+        <h3>${titleIcon} ${title}</h3>
+        <button class="modal-close" id="custom-modal-close-btn">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        ${message}
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" id="custom-modal-cancel-btn">
+          <i class="bi bi-x-lg"></i> Cancel
+        </button>
+        <button class="modal-btn ${requireCheckbox ? 'modal-btn-danger' : 'modal-btn-primary'}" id="custom-modal-confirm-btn" ${requireCheckbox ? 'disabled' : ''}>
+          ${requireCheckbox ? '<i class="bi bi-shield-exclamation"></i> Load JavaScript File' : '<i class="bi bi-check-lg"></i> Confirm'}
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    window.modalManager.showOverlay();
+    modal.style.display = 'block';
+
+    const checkbox = document.getElementById('js-warning-understand-checkbox');
+    const confirmBtn = document.getElementById('custom-modal-confirm-btn');
+    const closeBtn = document.getElementById('custom-modal-close-btn');
+    const cancelBtn = document.getElementById('custom-modal-cancel-btn');
+
+    if (requireCheckbox && checkbox && confirmBtn) {
+      checkbox.addEventListener('change', () => {
+        confirmBtn.disabled = !checkbox.checked;
+      });
+    }
+
+    const closeModal = () => {
+      modal.classList.add('closing');
+      setTimeout(() => {
+        modal.remove();
+      }, 300);
+      window.modalManager.hideOverlay();
+      this.pendingJsPath = null;
+    };
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeModal);
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', closeModal);
+    }
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', async () => {
+        closeModal();
+        if (onConfirm) {
+          await onConfirm();
+        }
+      });
+    }
+
+    const overlay = document.getElementById('modal-overlay');
+    if (overlay) {
+      const overlayClickHandler = () => {
+        closeModal();
+        overlay.removeEventListener('click', overlayClickHandler);
+      };
+      overlay.addEventListener('click', overlayClickHandler);
+    }
+  }
+
+  async confirmLoadJs() {
+    if (!this.pendingJsPath) return;
+
+    try {
+      await this.loadCustomJsFile(this.pendingJsPath);
+      await this.saveJsPaths();
+      this.renderJsList();
+
+      if (window.toastManager) {
+        window.toastManager.success('Custom JavaScript loaded successfully');
+      }
+    } catch (error) {
+      console.error('Error loading custom JS:', error);
+      if (window.toastManager) {
+        window.toastManager.error('Failed to load custom JavaScript');
+      }
+    } finally {
+      this.pendingJsPath = null;
+    }
+  }
+
+  async loadCustomCssFile(filePath) {
+    console.log('loadCustomCssFile called with:', filePath);
+
+    if (!window.electronAPI || !window.electronAPI.readCustomFile) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.readCustomFile(filePath);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to read CSS file');
+      }
+
+      const element = document.createElement('style');
+      element.id = `custom-css-${this.customCssFiles.length}`;
+      element.textContent = result.content;
+      document.head.appendChild(element);
+
+      this.customCssFiles.push({ path: filePath, element });
+      console.log('Custom CSS file added:', filePath);
+    } catch (error) {
+      console.error('Error loading custom CSS file:', error);
+      if (window.toastManager) {
+        window.toastManager.error(`Failed to load CSS: ${error.message}`);
+      }
+      throw error;
+    }
+  }
+
+  async loadCustomJsFile(filePath) {
+    console.log('loadCustomJsFile called with:', filePath);
+
+    if (!window.electronAPI || !window.electronAPI.readCustomFile) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.readCustomFile(filePath);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to read JS file');
+      }
+
+      const element = document.createElement('script');
+      element.id = `custom-js-${this.customJsFiles.length}`;
+      element.textContent = result.content;
+      document.body.appendChild(element);
+
+      this.customJsFiles.push({ path: filePath, element });
+      console.log('Custom JS file added:', filePath);
+    } catch (error) {
+      console.error('Error loading custom JS file:', error);
+      if (window.toastManager) {
+        window.toastManager.error(`Failed to load JS: ${error.message}`);
+      }
+      throw error;
+    }
+  }
+
+  async saveCssPaths() {
+    const paths = this.customCssFiles.map(f => f.path);
+    await window.electronAPI.store.set('customCssPaths', paths);
+  }
+
+  async saveJsPaths() {
+    const paths = this.customJsFiles.map(f => f.path);
+    await window.electronAPI.store.set('customJsPaths', paths);
+  }
+
+  async removeCustomCssFile(filePath) {
+    const index = this.customCssFiles.findIndex(f => f.path === filePath);
+    if (index === -1) return;
+
+    const file = this.customCssFiles[index];
+    if (file.element) {
+      file.element.remove();
+    }
+
+    this.customCssFiles.splice(index, 1);
+    await this.saveCssPaths();
+    this.renderCssList();
+
+    if (window.toastManager) {
+      window.toastManager.success('CSS file removed');
+    }
+  }
+
+  async removeCustomJsFile(filePath) {
+    const index = this.customJsFiles.findIndex(f => f.path === filePath);
+    if (index === -1) return;
+
+    const file = this.customJsFiles[index];
+    if (file.element) {
+      file.element.remove();
+    }
+
+    this.customJsFiles.splice(index, 1);
+    await this.saveJsPaths();
+    this.renderJsList();
+
+    if (window.toastManager) {
+      window.toastManager.success('JS file removed. Please restart for full effect.');
+    }
+  }
+
+  async reloadCustomCssFile(filePath) {
+    const index = this.customCssFiles.findIndex(f => f.path === filePath);
+    if (index === -1) return;
+
+    const file = this.customCssFiles[index];
+    if (file.element) {
+      file.element.remove();
+    }
+
+    this.customCssFiles.splice(index, 1);
+    await this.loadCustomCssFile(filePath);
+    this.renderCssList();
+
+    if (window.toastManager) {
+      window.toastManager.success('CSS file reloaded');
+    }
+  }
+
+  async reloadAllCss() {
+    const paths = [...this.customCssFiles.map(f => f.path)];
+    
+    // Remove all
+    for (const file of this.customCssFiles) {
+      if (file.element) {
+        file.element.remove();
+      }
+    }
+    this.customCssFiles = [];
+
+    // Reload all
+    for (const path of paths) {
+      await this.loadCustomCssFile(path);
+    }
+
+    this.renderCssList();
+
+    if (window.toastManager) {
+      window.toastManager.success('All CSS files reloaded');
+    }
+  }
+
+  renderCssList() {
+    const container = document.getElementById('custom-css-list');
+    if (!container) {
+      console.warn('CSS list container not found');
+      return;
+    }
+
+    if (this.customCssFiles.length === 0) {
+      container.innerHTML = `
+        <div class="custom-files-empty">
+          <i class="bi bi-file-earmark-code"></i>
+          <p>No custom CSS files loaded</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = '';
+    this.customCssFiles.forEach((file, index) => {
+      const item = this.createFileItem(file.path, 'css', index);
+      container.appendChild(item);
+    });
+  }
+
+  renderJsList() {
+    const container = document.getElementById('custom-js-list');
+    if (!container) {
+      console.warn('JS list container not found');
+      return;
+    }
+
+    if (this.customJsFiles.length === 0) {
+      container.innerHTML = `
+        <div class="custom-files-empty">
+          <i class="bi bi-file-earmark-code"></i>
+          <p>No custom JavaScript files loaded</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = '';
+    this.customJsFiles.forEach((file, index) => {
+      const item = this.createFileItem(file.path, 'js', index);
+      container.appendChild(item);
+    });
+  }
+
+  createFileItem(filePath, type, index) {
+    const item = document.createElement('div');
+    item.className = 'custom-file-item';
+
+    const fileName = filePath.split(/[\\/]/).pop();
+    const icon = type === 'css' ? 'bi-filetype-css' : 'bi-filetype-js';
+
+    item.innerHTML = `
+      <i class="bi ${icon} custom-file-item-icon"></i>
+      <div class="custom-file-item-info">
+        <div class="custom-file-item-name">${fileName}</div>
+        <div class="custom-file-item-path">${filePath}</div>
+      </div>
+      <div class="custom-file-item-actions">
+        ${type === 'css' ? `<button class="custom-file-action-btn" data-action="reload" title="Reload"><i class="bi bi-arrow-clockwise"></i></button>` : ''}
+        <button class="custom-file-action-btn danger" data-action="remove" title="Remove"><i class="bi bi-trash"></i></button>
+      </div>
+    `;
+
+    const reloadBtn = item.querySelector('[data-action="reload"]');
+    if (reloadBtn) {
+      reloadBtn.addEventListener('click', () => {
+        if (type === 'css') {
+          this.reloadCustomCssFile(filePath);
+        }
+      });
+    }
+
+    const removeBtn = item.querySelector('[data-action="remove"]');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        if (type === 'css') {
+          this.removeCustomCssFile(filePath);
+        } else {
+          this.removeCustomJsFile(filePath);
+        }
+      });
+    }
+
+    return item;
+  }
+
+  async loadCustomCss(filePath) {
+    console.log('loadCustomCss called with path:', filePath);
+    
+    if (this.customCssElement) {
+      console.log('Removing existing custom CSS element');
+      this.customCssElement.remove();
+    }
+
+    if (!window.electronAPI || !window.electronAPI.readCustomFile) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      console.log('Reading custom CSS file...');
+      const result = await window.electronAPI.readCustomFile(filePath);
+      
+      console.log('Read result:', result);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to read CSS file');
+      }
+
+      this.customCssElement = document.createElement('style');
+      this.customCssElement.id = 'custom-css';
+      this.customCssElement.textContent = result.content;
+      document.head.appendChild(this.customCssElement);
+
+      console.log('Custom CSS element added to head, content length:', result.content.length);
+      console.log('Custom CSS applied successfully from:', filePath);
+    } catch (error) {
+      console.error('Error loading custom CSS:', error);
+      
+      if (window.toastManager) {
+        window.toastManager.error(`Failed to load custom CSS: ${error.message}`);
+      }
+      
+      await window.electronAPI.store.delete('customCssPath');
+      this.updateCssPathUI('');
+      
+      throw error;
+    }
+  }
+
+  async loadCustomJs(filePath) {
+    if (this.customJsElement) {
+      this.customJsElement.remove();
+    }
+
+    if (!window.electronAPI || !window.electronAPI.readCustomFile) {
+      console.error('Electron API not available');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.readCustomFile(filePath);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to read JavaScript file');
+      }
+
+      this.customJsElement = document.createElement('script');
+      this.customJsElement.id = 'custom-js';
+      this.customJsElement.textContent = result.content;
+      document.body.appendChild(this.customJsElement);
+
+      console.log('Custom JavaScript loaded from:', filePath);
+    } catch (error) {
+      console.error('Error loading custom JavaScript:', error);
+      throw error;
+    }
+  }
+
+  async removeCustomCss() {
+    if (this.customCssElement) {
+      this.customCssElement.remove();
+      this.customCssElement = null;
+    }
+
+    if (window.electronAPI && window.electronAPI.store) {
+      await window.electronAPI.store.delete('customCssPath');
+    }
+
+    this.savedCssPath = null;
+    this.updateCssPathUI('');
+
+    if (window.toastManager) {
+      window.toastManager.success('Custom CSS removed');
+    }
+  }
+
+  async removeCustomJs() {
+    if (this.customJsElement) {
+      this.customJsElement.remove();
+      this.customJsElement = null;
+    }
+
+    if (window.electronAPI && window.electronAPI.store) {
+      await window.electronAPI.store.delete('customJsPath');
+    }
+
+    this.savedJsPath = null;
+    this.updateJsPathUI('');
+
+    if (window.toastManager) {
+      window.toastManager.success('Custom JavaScript removed. Please restart the app for full effect.');
+    }
+  }
+
+  async reloadCustomCss() {
+    if (!window.electronAPI || !window.electronAPI.store) return;
+
+    try {
+      const customCssPath = await window.electronAPI.store.get('customCssPath');
+      
+      if (!customCssPath) {
+        if (window.toastManager) {
+          window.toastManager.info('No custom CSS to reload');
+        }
+        return;
+      }
+
+      await this.loadCustomCss(customCssPath);
+
+      if (window.toastManager) {
+        window.toastManager.success('Custom CSS reloaded');
+      }
+    } catch (error) {
+      console.error('Error reloading custom CSS:', error);
+      if (window.toastManager) {
+        window.toastManager.error('Failed to reload custom CSS');
+      }
+    }
+  }
+
+  async reloadCustomJs() {
+    if (window.toastManager) {
+      window.toastManager.info('Please restart the application to reload custom JavaScript');
+    }
+  }
+
+  updateCssPathUI(path) {
+    console.log('Updating CSS path UI with:', path);
+    const input = document.getElementById('custom-css-path');
+    if (input) {
+      input.value = path || '';
+      input.placeholder = path ? '' : 'No custom CSS loaded';
+      console.log('CSS path UI updated');
+    } else {
+      console.warn('custom-css-path input not found');
+    }
+  }
+
+  updateJsPathUI(path) {
+    console.log('Updating JS path UI with:', path);
+    const input = document.getElementById('custom-js-path');
+    if (input) {
+      input.value = path || '';
+      input.placeholder = path ? '' : 'No custom JavaScript loaded';
+      console.log('JS path UI updated');
+    } else {
+      console.warn('custom-js-path input not found');
+    }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.customizationManager = new CustomizationManager();
+  console.log('Customization Manager initialized');
+}

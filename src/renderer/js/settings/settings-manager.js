@@ -43,6 +43,12 @@ class SettingsManager {
               window.logsManager.reinitialize();
             }, 250);
           }
+          
+          if (tabName === 'customization' && window.customizationManager) {
+            setTimeout(() => {
+              window.customizationManager.setupEventListeners();
+            }, 250);
+          }
         }
       });
       this.tabSwitchingAttached = true;
@@ -92,6 +98,48 @@ class SettingsManager {
       });
       restartTutorialBtn.dataset.listenerAttached = "true";
       console.log("Restart tutorial button listener attached");
+    }
+
+    const clearTempFilesBtn = document.getElementById("clear-temp-files-btn");
+    if (clearTempFilesBtn && !clearTempFilesBtn.dataset.listenerAttached) {
+      clearTempFilesBtn.addEventListener("click", async () => {
+        await this.clearTempFiles();
+      });
+      clearTempFilesBtn.dataset.listenerAttached = "true";
+      console.log("Clear temp files button listener attached");
+    }
+
+    const installConfirmToggle = document.getElementById("install-confirm-enabled");
+    if (installConfirmToggle && !installConfirmToggle.dataset.listenerAttached) {
+      installConfirmToggle.addEventListener("change", async () => {
+        console.log("Install confirm toggle changed!");
+        const enabled = installConfirmToggle.checked;
+        console.log("New value:", enabled);
+        
+        try {
+          await window.electronAPI.store.set("installConfirmEnabled", enabled);
+          console.log("Setting saved successfully");
+          
+          if (window.toastManager) {
+            window.toastManager.success(
+              enabled ? "Install confirmation enabled" : "Install confirmation disabled"
+            );
+          } else {
+            console.warn("Toast manager not available");
+          }
+        } catch (error) {
+          console.error("Failed to save install confirm setting:", error);
+          if (window.toastManager) {
+            window.toastManager.error("Failed to save setting");
+          }
+        }
+      });
+      installConfirmToggle.dataset.listenerAttached = "true";
+      console.log("Install confirm toggle listener attached");
+      
+      this.loadInstallConfirmSetting();
+    } else {
+      console.log("Install confirm toggle:", installConfirmToggle ? "already has listener" : "not found");
     }
 
     const switchIp = document.getElementById("switch-ip");
@@ -419,6 +467,65 @@ OK, I understand
       document.body.classList.add("reduced-animations");
     } else if (preference === "none") {
       document.body.classList.add("no-animations");
+    }
+  }
+
+  async loadInstallConfirmSetting() {
+    try {
+      const installConfirmEnabled = await window.electronAPI.store.get("installConfirmEnabled");
+      const installConfirmToggle = document.getElementById("install-confirm-enabled");
+      if (installConfirmToggle) {
+        installConfirmToggle.checked = installConfirmEnabled !== false;
+      }
+      console.log("Loaded install confirm setting:", installConfirmEnabled);
+    } catch (error) {
+      console.error("Failed to load install confirm setting:", error);
+    }
+  }
+
+  async clearTempFiles() {
+    if (!window.electronAPI || !window.electronAPI.clearTempFiles) {
+      if (window.toastManager) {
+        window.toastManager.error('Clear temp files function not available');
+      }
+      return;
+    }
+
+    const btn = document.getElementById("clear-temp-files-btn");
+    if (btn) {
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+    }
+
+    try {
+      if (window.toastManager) {
+        window.toastManager.info('Clearing temporary files...');
+      }
+
+      const result = await window.electronAPI.clearTempFiles();
+
+      if (result.success) {
+        const message = result.deletedFiles > 0 
+          ? `Cleared ${result.deletedFiles} file(s) and ${result.deletedFolders} folder(s) (${result.totalSize} MB freed)`
+          : 'No temporary files to clear';
+        
+        if (window.toastManager) {
+          window.toastManager.success(message);
+        }
+      } else {
+        if (window.toastManager) {
+          window.toastManager.error(`Failed to clear temp files: ${result.error}`);
+        }
+      }
+    } catch (error) {
+      if (window.toastManager) {
+        window.toastManager.error(`Error: ${error.message}`);
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
     }
   }
 }

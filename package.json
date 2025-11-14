@@ -18,6 +18,7 @@
   "dependencies": {
     "adm-zip": "^0.5.10",
     "basic-ftp": "^5.0.5",
+    "discord-rpc": "^4.0.1",
     "electron-store": "^8.2.0"
   },
   "devDependencies": {

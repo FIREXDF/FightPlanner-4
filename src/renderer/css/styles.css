@@ -1915,8 +1915,8 @@ body.no-animations .action-btn-small {
 
 .preview-area {
     width: 100%;
-    max-height: 300px;
-    min-height: 150px;
+    max-height: 400px;
+    min-height: 80px;
     background-color: #2a2a2a;
     border-radius: 12px;
     border: 1px solid #3a3a3a;
@@ -1925,7 +1925,11 @@ body.no-animations .action-btn-small {
     align-items: center;
     justify-content: center;
     position: relative;
-    transition: opacity 0.2s ease;
+    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+}
+
+.preview-area.no-preview {
+    height: 80px !important;
 }
 
 .preview-area.loading {
@@ -1935,8 +1939,8 @@ body.no-animations .action-btn-small {
 .preview-area img {
     max-width: 100%;
     max-height: 100%;
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
     transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
                 transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
@@ -1951,6 +1955,23 @@ body.no-animations .action-btn-small {
 .preview-area img[style*="opacity: 0"] {
     transform: scale(0.92);
     filter: blur(8px);
+}
+
+.preview-area img.preview-exit {
+    animation: previewExitAnimation 0.3s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+@keyframes previewExitAnimation {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.9);
+        filter: blur(8px);
+    }
 }
 
 /* Mod Items */
@@ -2036,9 +2057,7 @@ body.no-animations .action-btn-small {
     font-size: 14px;
     font-weight: 600;
     color: #ffffff;
-    margin: 0 0 12px 0;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #3a3a3a;
+    margin: 0;
 }
 
 .mod-info-content {
@@ -2061,6 +2080,122 @@ body.no-animations .action-btn-small {
 /* No animations mode */
 body.no-animations .mod-info-content {
     animation: none !important;
+}
+
+/* Install Confirmation Modal */
+#install-confirm-modal {
+    max-width: 650px;
+    min-width: 550px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.install-confirm-content {
+    text-align: center;
+    padding: 15px 0;
+}
+
+.install-preview-container {
+    width: 100%;
+    max-width: 500px;
+    height: 220px;
+    margin: 0 auto 20px;
+    background-color: #1e1e1e;
+    border-radius: 12px;
+    border: 1px solid #444;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.install-preview-loading {
+    font-size: 32px;
+    color: #4a9eff;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.install-preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.install-preview-image.loaded {
+    opacity: 1;
+}
+
+.install-icon {
+    font-size: 64px;
+    color: #4a9eff;
+    margin-bottom: 20px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+.install-question {
+    font-size: 17px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 16px;
+}
+
+.install-url-container {
+    background-color: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 16px 0;
+    text-align: left;
+}
+
+.install-url-container label {
+    display: block;
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.install-url-display {
+    color: #4a9eff;
+    font-size: 14px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    word-break: break-all;
+    line-height: 1.5;
+}
+
+.install-hint {
+    font-size: 13px;
+    color: #999;
+    margin-top: 12px;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+
+.install-confirm-modal .modal-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .mod-info-placeholder {
@@ -2128,6 +2263,198 @@ body.no-animations .mod-info-item {
 .mod-info-link:hover {
     color: #a0b8ff;
     text-decoration: underline;
+}
+
+.mod-info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.edit-info-btn {
+    background-color: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    border-radius: 6px;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 6px 10px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.edit-info-btn:hover {
+    background-color: #4a4a4a;
+    border-color: #5a5a5a;
+    transform: translateY(-1px);
+}
+
+.edit-info-btn:active {
+    transform: translateY(0);
+}
+
+.edit-info-btn i {
+    font-size: 12px;
+}
+
+.mod-info-editor-modal {
+    width: 600px;
+    max-width: 90vw;
+    background-color: #2a2a2a;
+    border-radius: 12px;
+    border: 1px solid #3a3a3a;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.mod-info-editor-modal .modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #3a3a3a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #252525;
+}
+
+.mod-info-editor-modal .modal-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+}
+
+.mod-info-editor-modal .modal-close {
+    background: none;
+    border: none;
+    color: #999999;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.mod-info-editor-modal .modal-close:hover {
+    background-color: #3a3a3a;
+    color: #ffffff;
+}
+
+.mod-info-editor-modal .modal-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.mod-info-editor-modal .form-group {
+    margin-bottom: 16px;
+}
+
+.mod-info-editor-modal .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 6px;
+}
+
+.mod-info-editor-modal .form-group input,
+.mod-info-editor-modal .form-group select,
+.mod-info-editor-modal .form-group textarea {
+    width: 100%;
+    background-color: #1a1a1a;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    color: #ffffff;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: 'Segoe UI', sans-serif;
+    transition: all 0.2s ease;
+}
+
+.mod-info-editor-modal .form-group input:focus,
+.mod-info-editor-modal .form-group select:focus,
+.mod-info-editor-modal .form-group textarea:focus {
+    outline: none;
+    border-color: #7a9bff;
+    background-color: #222222;
+}
+
+.mod-info-editor-modal .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.mod-info-editor-modal .modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #3a3a3a;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background-color: #252525;
+}
+
+.mod-info-editor-modal .modal-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.mod-info-editor-modal .modal-btn-secondary {
+    background-color: #3a3a3a;
+    color: #ffffff;
+}
+
+.mod-info-editor-modal .modal-btn-secondary:hover {
+    background-color: #4a4a4a;
+}
+
+.mod-info-editor-modal .modal-btn-primary {
+    background-color: #7a9bff;
+    color: #ffffff;
+}
+
+.mod-info-editor-modal .modal-btn-primary:hover {
+    background-color: #8fa9ff;
+}
+
+.advanced-textarea {
+    width: 100%;
+    min-height: 400px;
+    background-color: #1a1a1a;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    color: #ffffff;
+    padding: 12px;
+    font-size: 13px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    line-height: 1.6;
+    resize: vertical;
+    transition: all 0.2s ease;
+}
+
+.advanced-textarea:focus {
+    outline: none;
+    border-color: #7a9bff;
+    background-color: #222222;
+}
+
+.modal-footer .modal-btn-secondary {
+    margin-right: auto;
 }
 
 .action-buttons {
@@ -4858,5 +5185,120 @@ body.no-animations .mod-status-indicator.mod-active {
 
 .log-error .log-icon {
     color: #F44336;
+}
+
+/* Custom Files List */
+.custom-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.custom-files-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.custom-files-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+}
+
+.custom-files-list::-webkit-scrollbar-thumb {
+    background: rgba(122, 155, 255, 0.3);
+    border-radius: 4px;
+}
+
+.custom-file-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.custom-file-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(122, 155, 255, 0.3);
+}
+
+.custom-file-item-icon {
+    font-size: 20px;
+    color: #7a9bff;
+    flex-shrink: 0;
+}
+
+.custom-file-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.custom-file-item-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.custom-file-item-path {
+    font-size: 11px;
+    color: #888888;
+    font-family: 'Consolas', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.custom-file-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.custom-file-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #cccccc;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.custom-file-action-btn:hover {
+    background: rgba(122, 155, 255, 0.15);
+    border-color: rgba(122, 155, 255, 0.3);
+    color: #7a9bff;
+}
+
+.custom-file-action-btn.danger:hover {
+    background: rgba(244, 67, 54, 0.15);
+    border-color: rgba(244, 67, 54, 0.3);
+    color: #f44336;
+}
+
+.custom-files-empty {
+    text-align: center;
+    padding: 32px;
+    color: #666666;
+}
+
+.custom-files-empty i {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
 }
 

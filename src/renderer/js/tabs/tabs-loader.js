@@ -67,6 +67,13 @@ function initializeTabFeatures(tabName) {
       });
     }
 
+    const editInfoBtn = document.getElementById("edit-info-btn");
+    if (editInfoBtn && window.modInfoEditor) {
+      editInfoBtn.addEventListener("click", () => {
+        window.modInfoEditor.handleClick();
+      });
+    }
+
     const actionButtons = document.querySelectorAll(".action-btn");
     actionButtons.forEach((btn) => {
       const title = btn.getAttribute("title");

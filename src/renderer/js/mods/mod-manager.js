@@ -95,6 +95,10 @@ class ModManager {
   async loadMods(modsData) {
     this.mods = modsData;
     this.renderModList(true);
+    
+    if (window.discordRPCClient) {
+      window.discordRPCClient.updateModCount(modsData.length);
+    }
   }
 
   renderModList(forceRender = false) {
@@ -154,17 +158,13 @@ class ModManager {
     }
   }
 
-  async selectMod(modId) {
+  async selectMod(modId, forceUpdate = false) {
     const mod = this.mods.find((m) => m.id === modId);
     if (!mod) return;
 
-    if (this.selectedMod && this.selectedMod.id === modId) {
-      return;
-    }
-
-    this.selectedMod = mod;
-    localStorage.setItem('selectedModId', modId);
-
+    const isSameMod = this.selectedMod && this.selectedMod.id === modId;
+    
+    // Always update DOM selection classes
     const allModItems = this.modListContainer.querySelectorAll(".mod-item");
     allModItems.forEach((item) => {
       if (item.dataset.modId === modId) {
@@ -173,6 +173,14 @@ class ModManager {
         item.classList.remove("selected");
       }
     });
+
+    // Skip reloading mod info if same mod and not forced
+    if (isSameMod && !forceUpdate) {
+      return;
+    }
+
+    this.selectedMod = mod;
+    localStorage.setItem('selectedModId', modId);
 
     this.updatePreview(mod);
 
@@ -191,14 +199,14 @@ class ModManager {
 
           if (modInfo) {
             console.log("Displaying mod info:", modInfo);
-            window.modInfoManager.displayModInfo(modInfo);
+            window.modInfoManager.displayModInfo(modInfo, mod.folderPath);
           } else {
             console.log("No mod info found, showing fallback");
 
             window.modInfoManager.displayModInfo({
               display_name: mod.name,
               description: "No info.toml file found",
-            });
+            }, mod.folderPath);
           }
         } catch (error) {
           console.error("Error loading mod info:", error);
@@ -210,7 +218,7 @@ class ModManager {
         window.modInfoManager.displayModInfo({
           display_name: mod.name,
           description: "No detailed information available",
-        });
+        }, null);
       }
     }
   }
@@ -232,12 +240,32 @@ class ModManager {
         );
 
         if (previewPath) {
+          // Animate out existing image if present
+          const existingImg = previewArea.querySelector("img");
+          if (existingImg) {
+            existingImg.style.opacity = "0";
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+
+          previewArea.classList.remove("no-preview");
+
           const img = document.createElement("img");
           img.style.opacity = "0";
           img.alt = "Preview";
 
           await new Promise((resolve, reject) => {
-            img.onload = resolve;
+            img.onload = () => {
+              // Calculate optimal height based on image aspect ratio
+              const aspectRatio = img.naturalHeight / img.naturalWidth;
+              const containerWidth = previewArea.offsetWidth;
+              let optimalHeight = containerWidth * aspectRatio;
+              
+              // Clamp between min and max
+              optimalHeight = Math.max(150, Math.min(400, optimalHeight));
+              
+              previewArea.style.height = `${optimalHeight}px`;
+              resolve();
+            };
             img.onerror = reject;
             img.src = previewPath;
           });
@@ -258,12 +286,32 @@ class ModManager {
     }
 
     if (mod.previewImage) {
+      // Animate out existing image if present
+      const existingImg = previewArea.querySelector("img");
+      if (existingImg) {
+        existingImg.style.opacity = "0";
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      previewArea.classList.remove("no-preview");
+
       const img = document.createElement("img");
       img.style.opacity = "0";
       img.alt = "Preview";
 
       await new Promise((resolve) => {
-        img.onload = resolve;
+        img.onload = () => {
+          // Calculate optimal height based on image aspect ratio
+          const aspectRatio = img.naturalHeight / img.naturalWidth;
+          const containerWidth = previewArea.offsetWidth;
+          let optimalHeight = containerWidth * aspectRatio;
+          
+          // Clamp between min and max
+          optimalHeight = Math.max(150, Math.min(400, optimalHeight));
+          
+          previewArea.style.height = `${optimalHeight}px`;
+          resolve();
+        };
         img.onerror = resolve;
         img.src = mod.previewImage;
       });
@@ -276,6 +324,20 @@ class ModManager {
         previewArea.classList.remove("loading");
       }, 10);
     } else {
+      // Animate out existing image if present before showing "No preview"
+      const existingImg = previewArea.querySelector("img");
+      if (existingImg) {
+        existingImg.classList.add("preview-exit");
+        
+        // Shrink immediately while image fades out
+        previewArea.classList.add("no-preview");
+        
+        await new Promise(resolve => setTimeout(resolve, 150));
+      } else {
+        // No existing image, just shrink
+        previewArea.classList.add("no-preview");
+      }
+
       previewArea.innerHTML =
         '<p style="color: #666; text-align: center;">No preview available</p>';
       previewArea.classList.remove("loading");

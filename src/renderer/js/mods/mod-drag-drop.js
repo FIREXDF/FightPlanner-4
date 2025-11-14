@@ -28,44 +28,6 @@ class ModDragDropHandler {
   }
 
   setupWindowDropListener() {
-    if (window.electronAPI && window.electronAPI.onWindowDropFiles) {
-      window.electronAPI.onWindowDropFiles((filePaths) => {
-        this.hideDragOverlay();
-        this.isDragging = false;
-        
-        if (window.toastManager) {
-          window.toastManager.info(`Installing ${filePaths.length} file(s)...`);
-        }
-      });
-    }
-
-    if (window.electronAPI && window.electronAPI.onDropResult) {
-      window.electronAPI.onDropResult((data) => {
-        if (data && data.result) {
-          if (data.result.success) {
-            if (window.toastManager) {
-              window.toastManager.success(`Mod "${data.result.modName}" installed successfully!`);
-            }
-            
-            if (window.settingsManager) {
-              window.settingsManager.refreshModsList();
-            }
-          } else {
-            if (window.toastManager) {
-              window.toastManager.error(`Installation error: ${data.result.error || 'Unknown error'}`);
-            }
-          }
-        }
-      });
-    }
-
-    if (window.electronAPI && window.electronAPI.onDropError) {
-      window.electronAPI.onDropError((error) => {
-        if (window.toastManager) {
-          window.toastManager.error(error);
-        }
-      });
-    }
   }
 
   setupEventListeners() {
@@ -202,8 +164,6 @@ class ModDragDropHandler {
       return;
     }
     
-    // Allow Electron's drop-files event to work by not preventing default
-    // We still need to prevent default to show the overlay, but we'll do it conditionally
     e.preventDefault();
     e.stopPropagation();
     
@@ -227,97 +187,83 @@ class ModDragDropHandler {
 
   async handleDrop(e) {
     if (!this.isToolsTabActive()) {
-      console.log('Drop ignored - Tools tab not active');
       return;
     }
     
-    console.log('Browser drop event triggered');
+    e.preventDefault();
+    e.stopPropagation();
     
-    // Don't prevent default immediately - let Electron's drop-files event fire first
-    // We'll use a small delay to allow Electron event to process
     this.isDragging = false;
     this.hideDragOverlay();
     
-    // Wait a bit to see if Electron's drop-files event handles it
-    // If not, we'll try to handle it from the browser event
-    setTimeout(async () => {
-      // Check if files were already processed by Electron event
-      // If not, try to process from browser event
-      const files = Array.from(e.dataTransfer.files);
-      
-      if (files.length === 0) {
-        console.log('No files in drop event');
+    const files = Array.from(e.dataTransfer.files);
+    
+    if (files.length === 0) {
+      return;
+    }
+    
+    const filePaths = [];
+    
+    for (const file of files) {
+      try {
+        const filePath = window.electronAPI.getPathForFile(file);
+        if (filePath) {
+          filePaths.push(filePath);
+        }
+      } catch (error) {
+        console.error('Error getting file path:', error);
+      }
+    }
+    
+    if (filePaths.length === 0) {
+      if (window.toastManager) {
+        window.toastManager.error('Could not access file paths. Please use the Add button instead.');
+      }
+      return;
+    }
+    
+    try {
+      const modsPath = await window.electronAPI.store.get('modsPath');
+      if (!modsPath) {
+        if (window.toastManager) {
+          window.toastManager.error('Mods folder not configured. Please set it in Settings.');
+        }
         return;
       }
       
-      // Prevent default to stop browser from opening files
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // In Electron, File objects from dataTransfer might have a path property
-      // Try to extract paths
-      const filePaths = [];
-      
-      for (const file of files) {
-        // Check if file has path (Electron extension)
-        if (file.path) {
-          filePaths.push(file.path);
-          console.log('Found file path:', file.path);
-        } else {
-          console.warn('File path not available for:', file.name, 'File object:', file);
-        }
+      if (window.toastManager) {
+        window.toastManager.info(`Installing ${filePaths.length} file(s)...`);
       }
       
-      // If we have file paths, install them
-      if (filePaths.length > 0 && window.electronAPI && window.electronAPI.installModFromPath) {
+      for (const filePath of filePaths) {
         try {
-          const modsPath = await window.electronAPI.store.get('modsPath');
-          if (!modsPath) {
+          const result = await window.electronAPI.installModFromPath(filePath, modsPath);
+          if (result && result.success) {
             if (window.toastManager) {
-              window.toastManager.error('Mods folder not configured. Please set it in Settings.');
+              window.toastManager.success(`Mod "${result.modName}" installed successfully!`);
             }
-            return;
-          }
-          
-          if (window.toastManager) {
-            window.toastManager.info(`Installing ${filePaths.length} file(s)...`);
-          }
-          
-          for (const filePath of filePaths) {
-            try {
-              console.log('Installing mod from path:', filePath);
-              const result = await window.electronAPI.installModFromPath(filePath, modsPath);
-              if (result && result.success) {
-                if (window.toastManager) {
-                  window.toastManager.success(`Mod "${result.modName}" installed successfully!`);
-                }
-                if (window.settingsManager) {
-                  await window.settingsManager.refreshModsList();
-                }
-              } else {
-                if (window.toastManager) {
-                  window.toastManager.error(`Installation error: ${result?.error || 'Unknown error'}`);
-                }
+            
+            setTimeout(() => {
+              if (window.modManager) {
+                window.modManager.fetchMods();
               }
-            } catch (error) {
-              console.error('Error installing mod:', error);
-              if (window.toastManager) {
-                window.toastManager.error(`Error installing mod: ${error.message}`);
-              }
+            }, 500);
+          } else {
+            if (window.toastManager) {
+              window.toastManager.error(`Installation error: ${result?.error || 'Unknown error'}`);
             }
           }
         } catch (error) {
-          console.error('Error in handleDrop:', error);
           if (window.toastManager) {
-            window.toastManager.error(`Error: ${error.message}`);
+            window.toastManager.error(`Error installing mod: ${error.message}`);
           }
         }
-      } else {
-        console.log('No file paths available or API not available');
-        console.log('Files:', files);
-        console.log('electronAPI:', window.electronAPI);
       }
-    }, 50);
+    } catch (error) {
+      if (window.toastManager) {
+        window.toastManager.error(`Error: ${error.message}`);
+      }
+    }
   }
 }
 

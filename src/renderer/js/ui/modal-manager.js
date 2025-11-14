@@ -5,6 +5,10 @@ class ModalManager {
     this.uninstallCallback = null;
     this.deletePluginCallback = null;
     this.currentPlugin = null;
+    this.editInfoCallback = null;
+    this.advancedInfoCallback = null;
+    this.currentModPath = null;
+    this.pendingInstallData = null;
   }
 
   showOverlay() {
@@ -390,6 +394,214 @@ class ModalManager {
     this.changeSlotCallback(changes);
     this.closeChangeSlotModal();
   }
+
+  openEditInfoModal(modPath, currentInfo, callback) {
+    this.editInfoCallback = callback;
+
+    const modal = document.getElementById("edit-info-modal");
+    const displayNameInput = document.getElementById("edit-info-display-name");
+    const authorsInput = document.getElementById("edit-info-authors");
+    const versionInput = document.getElementById("edit-info-version");
+    const categorySelect = document.getElementById("edit-info-category");
+    const urlInput = document.getElementById("edit-info-url");
+    const descriptionTextarea = document.getElementById("edit-info-description");
+
+    if (modal) {
+      modal.classList.remove("closing");
+
+      if (displayNameInput) displayNameInput.value = currentInfo?.display_name || '';
+      if (authorsInput) authorsInput.value = currentInfo?.authors || '';
+      if (versionInput) versionInput.value = currentInfo?.version || '';
+      if (categorySelect) categorySelect.value = currentInfo?.category || '';
+      if (urlInput) urlInput.value = currentInfo?.url || '';
+      if (descriptionTextarea) descriptionTextarea.value = currentInfo?.description || '';
+
+      this.showOverlay();
+      modal.style.display = "block";
+    }
+  }
+
+  closeEditInfoModal() {
+    const modal = document.getElementById("edit-info-modal");
+    if (modal) {
+      modal.classList.add("closing");
+      setTimeout(() => {
+        modal.style.display = "none";
+        modal.classList.remove("closing");
+      }, 300);
+    }
+    this.hideOverlay();
+    this.editInfoCallback = null;
+  }
+
+  confirmEditInfo() {
+    const form = document.getElementById("mod-info-form");
+    if (!form) return;
+
+    const formData = new FormData(form);
+    const info = {};
+
+    formData.forEach((value, key) => {
+      if (value.trim()) {
+        info[key] = value.trim();
+      }
+    });
+
+    if (this.editInfoCallback) {
+      this.editInfoCallback(info);
+    }
+
+    this.closeEditInfoModal();
+  }
+
+  openAdvancedInfoModal(modPath, currentTomlContent) {
+    this.currentModPath = modPath;
+    
+    const modal = document.getElementById("advanced-info-modal");
+    const textarea = document.getElementById("advanced-info-textarea");
+
+    if (modal && textarea) {
+      modal.classList.remove("closing");
+      textarea.value = currentTomlContent || '';
+
+      this.showOverlay();
+      modal.style.display = "block";
+    }
+  }
+
+  closeAdvancedInfoModal() {
+    const modal = document.getElementById("advanced-info-modal");
+    if (modal) {
+      modal.classList.add("closing");
+      setTimeout(() => {
+        modal.style.display = "none";
+        modal.classList.remove("closing");
+      }, 300);
+    }
+    this.hideOverlay();
+    this.advancedInfoCallback = null;
+    this.currentModPath = null;
+  }
+
+  async confirmAdvancedInfo() {
+    const textarea = document.getElementById("advanced-info-textarea");
+    if (!textarea || !this.currentModPath) return;
+
+    const tomlContent = textarea.value;
+
+    try {
+      const result = await window.electronAPI.saveModInfoRaw(this.currentModPath, tomlContent);
+      
+      if (result.success) {
+        if (window.toastManager) {
+          window.toastManager.success('Info.toml saved successfully');
+        }
+        this.closeAdvancedInfoModal();
+        
+        if (window.modManager && window.modManager.selectedMod) {
+          window.modManager.selectMod(window.modManager.selectedMod.id);
+        }
+      } else {
+        if (window.toastManager) {
+          window.toastManager.error('Failed to save info.toml: ' + result.error);
+        }
+      }
+    } catch (error) {
+      if (window.toastManager) {
+        window.toastManager.error('Failed to save info.toml');
+      }
+    }
+  }
+
+  async openInstallConfirmModal(url, downloadId, modId) {
+    this.pendingInstallData = { url, downloadId, modId };
+    
+    const urlDisplay = document.getElementById('install-url-display');
+    if (urlDisplay) {
+      urlDisplay.textContent = url;
+    }
+
+    const modal = document.getElementById('install-confirm-modal');
+    if (modal) {
+      modal.classList.remove('closing');
+      this.showOverlay();
+      modal.style.display = 'block';
+    }
+
+    // Fetch preview image from GameBanana
+    if (modId && window.electronAPI?.fetchGameBananaPreview) {
+      const previewImage = document.getElementById('install-preview-image');
+      const previewLoading = document.querySelector('.install-preview-loading');
+      
+      try {
+        const result = await window.electronAPI.fetchGameBananaPreview(modId);
+        
+        if (result.success && result.imageUrl) {
+          previewImage.onload = () => {
+            previewImage.classList.add('loaded');
+            if (previewLoading) previewLoading.style.display = 'none';
+          };
+          previewImage.src = result.imageUrl;
+          previewImage.style.display = 'block';
+        } else {
+          // No preview available, hide loading
+          if (previewLoading) previewLoading.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Failed to fetch preview:', error);
+        if (previewLoading) previewLoading.style.display = 'none';
+      }
+    }
+  }
+
+  closeInstallConfirmModal() {
+    const modal = document.getElementById('install-confirm-modal');
+    if (modal) {
+      modal.classList.add('closing');
+      setTimeout(() => {
+        modal.style.display = 'none';
+        modal.classList.remove('closing');
+        
+        // Reset preview image
+        const previewImage = document.getElementById('install-preview-image');
+        const previewLoading = document.querySelector('.install-preview-loading');
+        if (previewImage) {
+          previewImage.src = '';
+          previewImage.style.display = 'none';
+          previewImage.classList.remove('loaded');
+        }
+        if (previewLoading) {
+          previewLoading.style.display = 'flex';
+        }
+      }, 300);
+    }
+    this.hideOverlay();
+    this.pendingInstallData = null;
+  }
+
+  async confirmInstall() {
+    if (this.pendingInstallData && window.electronAPI?.confirmProtocolInstall) {
+      const { url, downloadId } = this.pendingInstallData;
+      this.closeInstallConfirmModal();
+      
+      try {
+        await window.electronAPI.confirmProtocolInstall(url, downloadId);
+      } catch (error) {
+        console.error('Error confirming install:', error);
+        if (window.toastManager) {
+          window.toastManager.error('Failed to start installation');
+        }
+      }
+    }
+  }
+
+  cancelInstallConfirm() {
+    if (this.pendingInstallData && window.electronAPI?.cancelProtocolInstall) {
+      const { downloadId } = this.pendingInstallData;
+      window.electronAPI.cancelProtocolInstall(downloadId);
+    }
+    this.closeInstallConfirmModal();
+  }
 }
 
 if (typeof window !== "undefined") {
@@ -404,6 +616,9 @@ if (typeof window !== "undefined") {
         window.modalManager.closeUninstallModal();
         window.modalManager.closeAlertModal();
         window.modalManager.closeChangeSlotModal();
+        window.modalManager.closeEditInfoModal();
+        window.modalManager.closeAdvancedInfoModal();
+        window.modalManager.closeInstallConfirmModal();
         if (window.conflictModalManager) {
           window.conflictModalManager.closeConflictModal();
         }
@@ -417,6 +632,9 @@ if (typeof window !== "undefined") {
         window.modalManager.closeAlertModal();
         window.modalManager.closeDeletePluginModal();
         window.modalManager.closeChangeSlotModal();
+        window.modalManager.closeEditInfoModal();
+        window.modalManager.closeAdvancedInfoModal();
+        window.modalManager.closeInstallConfirmModal();
         if (window.conflictModalManager) {
           window.conflictModalManager.closeConflictModal();
         }

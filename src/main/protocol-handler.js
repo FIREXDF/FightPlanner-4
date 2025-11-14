@@ -155,6 +155,33 @@ class ProtocolHandler {
       console.log("[protocol] Download URL:", downloadUrl);
       console.log("[protocol] Mod ID:", modId);
 
+      // Send confirmation request to renderer
+      this.sendToRenderer("mod-install-confirm-request", {
+        url: downloadUrl,
+        downloadId,
+        modId
+      });
+
+      // Store the pending install data
+      this.pendingInstalls = this.pendingInstalls || new Map();
+      this.pendingInstalls.set(downloadId, { url: downloadUrl, modId, downloadId });
+    } catch (error) {
+      console.error("Error handling deep link:", error);
+      this.showError(`Installation failed: ${error.message}`);
+      this.sendToRenderer("mod-install-error", { error: error.message });
+    }
+  }
+
+  async proceedWithInstall(downloadId) {
+    const installData = this.pendingInstalls?.get(downloadId);
+    if (!installData) {
+      console.error("No pending install found for:", downloadId);
+      return;
+    }
+
+    const { url: downloadUrl, modId } = installData;
+
+    try {
       this.sendToRenderer("mod-install-start", {
         url: downloadUrl,
         downloadId,
@@ -193,10 +220,23 @@ class ProtocolHandler {
         downloadId,
         folderPath: modFolderPath,
       });
+
+      // Clean up pending install
+      if (this.pendingInstalls) {
+        this.pendingInstalls.delete(downloadId);
+      }
     } catch (error) {
-      console.error("Error handling deep link:", error);
+      console.error("Error during installation:", error);
       this.showError(`Installation failed: ${error.message}`);
-      this.sendToRenderer("mod-install-error", { error: error.message });
+      this.sendToRenderer("mod-install-error", { 
+        downloadId,
+        error: error.message 
+      });
+
+      // Clean up pending install
+      if (this.pendingInstalls) {
+        this.pendingInstalls.delete(downloadId);
+      }
     }
   }
   extractModId(url) {
@@ -394,6 +434,8 @@ class ProtocolHandler {
     await this.extractZip(zipPath, tempExtractDir);
     this.sendToRenderer("mod-extract-complete", { downloadId });
 
+    await this.verifyFptStructure(tempExtractDir);
+
     const extractedItems = fs.readdirSync(tempExtractDir);
     console.log("Extracted items:", extractedItems);
 
@@ -557,6 +599,420 @@ class ProtocolHandler {
     }
 
     console.log("[protocol][extract] unzip output:", stdout);
+  }
+
+  findFptFile(dirPath) {
+    try {
+      const items = fs.readdirSync(dirPath);
+      
+      for (const item of items) {
+        const itemPath = path.join(dirPath, item);
+        const stat = fs.statSync(itemPath);
+        
+        if (stat.isFile() && item.endsWith('.fpt')) {
+          console.log('[FPT] Found .fpt file:', item);
+          return itemPath;
+        } else if (stat.isDirectory()) {
+          const found = this.findFptFile(itemPath);
+          if (found) return found;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('[FPT] Error searching for .fpt file:', error);
+      return null;
+    }
+  }
+
+  parseFptFile(fptPath) {
+    try {
+      const content = fs.readFileSync(fptPath, 'utf-8');
+      console.log('[FPT] Raw file content:');
+      console.log(content);
+      
+      const lines = content.split('\n');
+      const structure = {};
+      const pathStack = [];
+      
+      console.log('[FPT] Parsing with indentation awareness...');
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        
+        const indentMatch = line.match(/^(\s*)/);
+        const indent = indentMatch ? indentMatch[1].length : 0;
+        const name = line.trim();
+        
+        if (!name) continue;
+        
+        const isDirectory = name.endsWith('/');
+        const cleanName = name.replace(/\/$/, '');
+        
+        while (pathStack.length > 0 && pathStack[pathStack.length - 1].indent >= indent) {
+          pathStack.pop();
+        }
+        
+        let currentPath = '';
+        if (pathStack.length > 0) {
+          currentPath = pathStack.map(p => p.name).join('/') + '/';
+        }
+        
+        const fullPath = currentPath + cleanName;
+        
+        if (isDirectory) {
+          pathStack.push({ name: cleanName, indent });
+          structure[fullPath + '/'] = 'directory';
+        } else {
+          structure[fullPath] = 'file';
+        }
+        
+        console.log(`[FPT]   ${fullPath} (${isDirectory ? 'dir' : 'file'})`);
+      }
+      
+      console.log('[FPT] Parsed structure:', Object.keys(structure));
+      return structure;
+    } catch (error) {
+      console.error('[FPT] Error parsing .fpt file:', error);
+      return {};
+    }
+  }
+
+  getActualStructure(dirPath, basePath = dirPath) {
+    const structure = [];
+    
+    try {
+      const items = fs.readdirSync(dirPath);
+      
+      for (const item of items) {
+        if (item.endsWith('.fpt')) continue;
+        
+        const itemPath = path.join(dirPath, item);
+        const relativePath = path.relative(basePath, itemPath);
+        const stat = fs.statSync(itemPath);
+        
+        if (stat.isDirectory()) {
+          structure.push(relativePath + '/');
+          const subStructure = this.getActualStructure(itemPath, basePath);
+          structure.push(...subStructure);
+        } else {
+          structure.push(relativePath);
+        }
+      }
+    } catch (error) {
+      console.error('[FPT] Error getting actual structure:', error);
+    }
+    
+    return structure;
+  }
+
+  async verifyFptStructure(extractDir) {
+    try {
+      console.log('[FPT] ========== STARTING FPT VERIFICATION ==========');
+      console.log('[FPT] Extract directory:', extractDir);
+      
+      console.log('[FPT] Listing contents of extract directory:');
+      const extractContents = fs.readdirSync(extractDir);
+      extractContents.forEach(item => {
+        const itemPath = path.join(extractDir, item);
+        const isDir = fs.statSync(itemPath).isDirectory();
+        console.log('[FPT]   -', item, isDir ? '(directory)' : '(file)');
+      });
+      
+      const fptPath = this.findFptFile(extractDir);
+      
+      if (!fptPath) {
+        console.log('[FPT] No .fpt file found, skipping structure verification');
+        return;
+      }
+      
+      console.log('[FPT] Found .fpt file at:', fptPath);
+      const expectedStructure = this.parseFptFile(fptPath);
+      
+      if (Object.keys(expectedStructure).length === 0) {
+        console.warn('[FPT] Empty or invalid .fpt file, skipping verification');
+        return;
+      }
+      
+      const fptDir = path.dirname(fptPath);
+      console.log('[FPT] FPT directory:', fptDir);
+      console.log('[FPT] Extract dir === FPT dir:', extractDir === fptDir);
+      
+      const firstExpectedFile = Object.keys(expectedStructure).find(f => expectedStructure[f] === 'file');
+      if (!firstExpectedFile) {
+        console.warn('[FPT] No files found in .fpt structure, skipping');
+        return;
+      }
+      
+      console.log('[FPT] First expected file:', firstExpectedFile);
+      const expectedFilePath = path.join(fptDir, firstExpectedFile);
+      console.log('[FPT] Looking for file at:', expectedFilePath);
+      const fileExists = fs.existsSync(expectedFilePath);
+      
+      console.log('[FPT] File exists at FPT dir root:', fileExists);
+      
+      if (fileExists && fptDir !== extractDir) {
+        console.log('[FPT] Files are correct but .fpt is in subdirectory');
+        console.log('[FPT] Need to reorganize files according to .fpt structure');
+        
+        await this.reorganizeByFptStructure(fptDir, expectedStructure);
+        console.log('[FPT] ✓ Files reorganized according to .fpt structure');
+        
+        const relativePath = path.relative(extractDir, fptDir);
+        const pathParts = relativePath.split(path.sep);
+        
+        if (pathParts.length === 2) {
+          const firstLevel = path.join(extractDir, pathParts[0]);
+          console.log('[FPT] Moving reorganized files from:', fptDir);
+          console.log('[FPT] Moving to:', firstLevel);
+          await this.reorganizeToRoot(fptDir, firstLevel);
+          console.log('[FPT] ✓ Files moved up one level');
+        }
+        
+        if (fs.existsSync(fptPath)) {
+          fs.unlinkSync(fptPath);
+          console.log('[FPT] ✓ Removed .fpt file');
+        }
+        
+      } else if (fileExists && fptDir === extractDir) {
+        console.log('[FPT] Files at correct location, reorganizing structure');
+        await this.reorganizeByFptStructure(fptDir, expectedStructure);
+        console.log('[FPT] ✓ Files reorganized according to .fpt structure');
+        
+        if (fs.existsSync(fptPath)) {
+          fs.unlinkSync(fptPath);
+          console.log('[FPT] ✓ Removed .fpt file');
+        }
+        
+      } else if (!fileExists) {
+        console.log('[FPT] Files not at root, searching in subdirectories...');
+        
+        const items = fs.readdirSync(fptDir);
+        console.log('[FPT] Items in FPT dir:', items);
+        let foundSubdir = null;
+        
+        for (const item of items) {
+          console.log('[FPT] Checking item:', item);
+          if (item.endsWith('.fpt') || item === 'info.toml' || item === 'preview.webp') {
+            console.log('[FPT]   -> Skipping (ignored file)');
+            continue;
+          }
+          
+          const itemPath = path.join(fptDir, item);
+          const stat = fs.statSync(itemPath);
+          
+          if (stat.isDirectory()) {
+            console.log('[FPT]   -> Is directory, checking for:', firstExpectedFile);
+            const testPath = path.join(itemPath, firstExpectedFile);
+            console.log('[FPT]   -> Test path:', testPath);
+            const exists = fs.existsSync(testPath);
+            console.log('[FPT]   -> Exists:', exists);
+            
+            if (exists) {
+              foundSubdir = itemPath;
+              console.log('[FPT] ✓ Found files in subdirectory:', item);
+              break;
+            }
+          } else {
+            console.log('[FPT]   -> Is file, skipping');
+          }
+        }
+        
+        if (foundSubdir) {
+          console.log('[FPT] Starting reorganization...');
+          console.log('[FPT] Source:', foundSubdir);
+          console.log('[FPT] Target:', fptDir);
+          await this.reorganizeToRoot(foundSubdir, fptDir);
+          console.log('[FPT] ✓ Files reorganized successfully');
+          
+          if (fs.existsSync(fptPath)) {
+            fs.unlinkSync(fptPath);
+            console.log('[FPT] ✓ Removed .fpt file');
+          }
+        } else {
+          console.warn('[FPT] ⚠ Could not find expected files anywhere');
+          console.warn('[FPT] Searched in:', fptDir);
+          console.warn('[FPT] Looking for:', firstExpectedFile);
+        }
+      }
+      
+      console.log('[FPT] ========== FPT VERIFICATION COMPLETE ==========');
+      
+    } catch (error) {
+      console.error('[FPT] Error during structure verification:', error);
+      console.error('[FPT] Stack trace:', error.stack);
+    }
+  }
+
+  async reorganizeByFptStructure(baseDir, fptStructure) {
+    try {
+      console.log('[FPT] [RESTRUCTURE] ========== START ==========');
+      console.log('[FPT] [RESTRUCTURE] Base directory:', baseDir);
+      
+      const filesToMove = {};
+      
+      for (const [fptPath, type] of Object.entries(fptStructure)) {
+        if (type === 'file') {
+          const fileName = path.basename(fptPath);
+          const targetPath = path.join(baseDir, fptPath);
+          
+          const foundPath = this.findFileRecursive(baseDir, fileName);
+          
+          if (foundPath && foundPath !== targetPath) {
+            filesToMove[foundPath] = targetPath;
+            console.log('[FPT] [RESTRUCTURE] Need to move:', fileName);
+            console.log('[FPT] [RESTRUCTURE]   From:', foundPath);
+            console.log('[FPT] [RESTRUCTURE]   To:', targetPath);
+          }
+        }
+      }
+      
+      for (const [sourcePath, targetPath] of Object.entries(filesToMove)) {
+        try {
+          const targetDirPath = path.dirname(targetPath);
+          if (!fs.existsSync(targetDirPath)) {
+            fs.mkdirSync(targetDirPath, { recursive: true });
+            console.log('[FPT] [RESTRUCTURE] Created directory:', targetDirPath);
+          }
+          
+          if (fs.existsSync(targetPath)) {
+            fs.unlinkSync(targetPath);
+          }
+          
+          this.copyRecursiveSync(sourcePath, targetPath);
+          fs.unlinkSync(sourcePath);
+          
+          console.log('[FPT] [RESTRUCTURE] ✓ Moved:', path.basename(sourcePath));
+        } catch (error) {
+          console.error('[FPT] [RESTRUCTURE] ✗ Failed to move:', sourcePath);
+          console.error('[FPT] [RESTRUCTURE] Error:', error.message);
+        }
+      }
+      
+      console.log('[FPT] [RESTRUCTURE] ========== COMPLETE ==========');
+    } catch (error) {
+      console.error('[FPT] [RESTRUCTURE] Fatal error:', error.message);
+      console.error('[FPT] [RESTRUCTURE] Stack:', error.stack);
+    }
+  }
+
+  findFileRecursive(dirPath, fileName) {
+    try {
+      const items = fs.readdirSync(dirPath);
+      
+      for (const item of items) {
+        if (item.endsWith('.fpt')) continue;
+        
+        const itemPath = path.join(dirPath, item);
+        const stat = fs.statSync(itemPath);
+        
+        if (stat.isFile() && item === fileName) {
+          return itemPath;
+        } else if (stat.isDirectory()) {
+          const found = this.findFileRecursive(itemPath, fileName);
+          if (found) return found;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async reorganizeToRoot(sourceDir, targetDir) {
+    try {
+      console.log('[FPT] [REORGANIZE] ========== START ==========');
+      console.log('[FPT] [REORGANIZE] Source:', sourceDir);
+      console.log('[FPT] [REORGANIZE] Target:', targetDir);
+      
+      if (!fs.existsSync(sourceDir)) {
+        console.error('[FPT] [REORGANIZE] Source directory does not exist!');
+        return;
+      }
+      
+      if (!fs.existsSync(targetDir)) {
+        console.error('[FPT] [REORGANIZE] Target directory does not exist!');
+        return;
+      }
+      
+      const items = fs.readdirSync(sourceDir);
+      console.log('[FPT] [REORGANIZE] Total items to move:', items.length);
+      console.log('[FPT] [REORGANIZE] Items:', items);
+      
+      for (const item of items) {
+        try {
+          const sourcePath = path.join(sourceDir, item);
+          const targetPath = path.join(targetDir, item);
+          
+          console.log('[FPT] [REORGANIZE] ----------------------------------------');
+          console.log('[FPT] [REORGANIZE] Processing:', item);
+          console.log('[FPT] [REORGANIZE]   Source:', sourcePath);
+          console.log('[FPT] [REORGANIZE]   Target:', targetPath);
+          
+          const sourceStats = fs.statSync(sourcePath);
+          console.log('[FPT] [REORGANIZE]   Type:', sourceStats.isDirectory() ? 'DIRECTORY' : 'FILE');
+          
+          if (fs.existsSync(targetPath)) {
+            console.log('[FPT] [REORGANIZE]   Target already exists, removing...');
+            try {
+              if (fs.statSync(targetPath).isDirectory()) {
+                fs.rmSync(targetPath, { recursive: true, force: true });
+                console.log('[FPT] [REORGANIZE]   ✓ Removed existing directory');
+              } else {
+                fs.unlinkSync(targetPath);
+                console.log('[FPT] [REORGANIZE]   ✓ Removed existing file');
+              }
+            } catch (removeError) {
+              console.error('[FPT] [REORGANIZE]   ✗ Failed to remove existing:', removeError.message);
+            }
+          }
+          
+          console.log('[FPT] [REORGANIZE]   Copying to target...');
+          this.copyRecursiveSync(sourcePath, targetPath);
+          console.log('[FPT] [REORGANIZE]   ✓ Copied successfully');
+          
+          console.log('[FPT] [REORGANIZE]   Removing source...');
+          if (sourceStats.isDirectory()) {
+            fs.rmSync(sourcePath, { recursive: true, force: true });
+          } else {
+            fs.unlinkSync(sourcePath);
+          }
+          console.log('[FPT] [REORGANIZE]   ✓ Removed source');
+          
+        } catch (itemError) {
+          console.error('[FPT] [REORGANIZE]   ✗ Failed to process item:', item);
+          console.error('[FPT] [REORGANIZE]   Error:', itemError.message);
+          console.error('[FPT] [REORGANIZE]   Stack:', itemError.stack);
+        }
+      }
+      
+      console.log('[FPT] [REORGANIZE] ----------------------------------------');
+      console.log('[FPT] [REORGANIZE] Checking source directory...');
+      if (fs.existsSync(sourceDir)) {
+        const remaining = fs.readdirSync(sourceDir);
+        console.log('[FPT] [REORGANIZE] Remaining items in source:', remaining.length);
+        
+        if (remaining.length === 0) {
+          console.log('[FPT] [REORGANIZE] Removing empty source directory...');
+          fs.rmdirSync(sourceDir);
+          console.log('[FPT] [REORGANIZE] ✓ Removed empty directory');
+        } else {
+          console.log('[FPT] [REORGANIZE] Source directory not empty:', remaining);
+        }
+      } else {
+        console.log('[FPT] [REORGANIZE] Source directory already removed');
+      }
+      
+      console.log('[FPT] [REORGANIZE] ========== COMPLETE ==========');
+      
+    } catch (error) {
+      console.error('[FPT] [REORGANIZE] ========== ERROR ==========');
+      console.error('[FPT] [REORGANIZE] Fatal error during reorganization:', error.message);
+      console.error('[FPT] [REORGANIZE] Stack trace:', error.stack);
+      throw error;
+    }
   }
 
   async fetchAndSaveModMetadata(modId, modFolderPath) {

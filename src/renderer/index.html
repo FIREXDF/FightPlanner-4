@@ -312,11 +312,120 @@
         </div>
     </div>
 
+    <!-- Edit Info Modal -->
+    <div id="edit-info-modal" class="modal mod-info-editor-modal" style="display: none;">
+        <div class="modal-header">
+            <h3><i class="bi bi-pencil-square"></i> Edit Info.toml</h3>
+            <button class="modal-close" onclick="window.modalManager.closeEditInfoModal()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="mod-info-form">
+                <div class="form-group">
+                    <label>Display Name</label>
+                    <input type="text" name="display_name" id="edit-info-display-name" placeholder="Mod name">
+                </div>
+                <div class="form-group">
+                    <label>Authors</label>
+                    <input type="text" name="authors" id="edit-info-authors" placeholder="Author name">
+                </div>
+                <div class="form-group">
+                    <label>Version</label>
+                    <input type="text" name="version" id="edit-info-version" placeholder="1.0.0">
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select name="category" id="edit-info-category">
+                        <option value="">Select category</option>
+                        <option value="Fighter">Fighter & Skins</option>
+                        <option value="Movesets">Movesets</option>
+                        <option value="stages">Stages</option>
+                        <option value="effects">Effects</option>
+                        <option value="final smash">Final Smash</option>
+                        <option value="UI">UI</option>
+                        <option value="Param">Param</option>
+                        <option value="audio">Audio</option>
+                        <option value="Other/misc">Other/Misc</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>URL</label>
+                    <input type="text" name="url" id="edit-info-url" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" id="edit-info-description" rows="6" placeholder="Mod description"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" onclick="window.modInfoEditor.openAdvancedMode()">
+                <i class="bi bi-code-slash"></i> Advanced
+            </button>
+            <button class="modal-btn modal-btn-cancel" onclick="window.modalManager.closeEditInfoModal()">Cancel</button>
+            <button class="modal-btn modal-btn-primary" onclick="window.modalManager.confirmEditInfo()">Save</button>
+        </div>
+    </div>
+
+    <!-- Advanced Info Modal -->
+    <div id="advanced-info-modal" class="modal mod-info-editor-modal" style="display: none;">
+        <div class="modal-header">
+            <h3><i class="bi bi-code-slash"></i> Advanced Edit - info.toml</h3>
+            <button class="modal-close" onclick="window.modalManager.closeAdvancedInfoModal()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Raw TOML Content</label>
+                <textarea id="advanced-info-textarea" class="advanced-textarea" placeholder="Edit the raw TOML file content here..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-cancel" onclick="window.modalManager.closeAdvancedInfoModal()">Cancel</button>
+            <button class="modal-btn modal-btn-primary" onclick="window.modalManager.confirmAdvancedInfo()">Save</button>
+        </div>
+    </div>
+
+    <!-- 1-Click Install Confirmation Modal -->
+    <div id="install-confirm-modal" class="modal" style="display: none;">
+        <div class="modal-header">
+            <h3><i class="fas fa-download"></i> Confirm Mod Installation</h3>
+            <button class="modal-close" onclick="window.modalManager.cancelInstallConfirm()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="install-confirm-content">
+                <div id="install-preview-container" class="install-preview-container">
+                    <div class="install-preview-loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <img id="install-preview-image" class="install-preview-image" style="display: none;">
+                </div>
+                <p class="install-question">Do you want to download and install this mod?</p>
+                <div class="install-url-container">
+                    <label>Download URL:</label>
+                    <div id="install-url-display" class="install-url-display"></div>
+                </div>
+                <p class="install-hint">The mod will be downloaded and automatically installed to your mods folder.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-cancel" onclick="window.modalManager.cancelInstallConfirm()">Cancel</button>
+            <button class="modal-btn modal-btn-primary" onclick="window.modalManager.confirmInstall()">
+                <i class="fas fa-download"></i> Download & Install
+            </button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="js/tutorial/tutorial-manager.js"></script>
     <script src="js/ui/toast-manager.js"></script>
     <script src="js/ui/modal-manager.js"></script>
     <script src="js/logs/logs-manager.js"></script>
+    <script src="js/customization/customization-manager.js"></script>
     <script src="js/fightplanner/fightplanner-manager.js"></script>
     <!-- Characters Manager -->
     <script src="js/characters/characters-data.js"></script>
@@ -331,6 +440,7 @@
     <script src="js/tabs/tabs-loader.js"></script>
     <script src="js/settings/settings-manager.js"></script>
     <script src="js/mods/mod-info.js"></script>
+    <script src="js/mods/mod-info-editor.js"></script>
     <!-- Mod Manager components (order is important) -->
     <script src="js/mods/mod-list-renderer.js"></script>
     <script src="js/mods/mod-context-menu.js"></script>
@@ -347,6 +457,8 @@
     <script src="js/ui/conflict-modal-manager.js"></script>
     <script src="js/core/renderer.js"></script>
     <script src="js/social/social-manager.js"></script>
+    <script src="js/core/discord-rpc-client.js"></script>
+    <script src="js/core/protocol-listener.js"></script>
 </body>
 </html>
 
