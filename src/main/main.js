@@ -108,14 +108,41 @@ function createWindow(options = {}) {
     webPreferences.nodeIntegration = false;
   });
   
+  let windowShown = false;
+  
+  const showWindow = () => {
+    if (!windowShown && mainWindow && !mainWindow.isDestroyed()) {
+      windowShown = true;
+      mainWindow.show();
+      
+      // Initialize animation handler with this window
+      AnimationHandler.initialize(mainWindow);
+      
+      if (options.animate) {
+        mainWindow.webContents.send('start-intro-animation');
+      }
+    }
+  };
+
+  // Additional fallback: force show after timeout (especially for Linux)
+  const showTimeout = setTimeout(() => {
+    if (!windowShown && mainWindow && !mainWindow.isDestroyed()) {
+      console.log('[linux] Force showing window after timeout');
+      showWindow();
+    }
+  }, process.platform === 'linux' ? 2000 : 5000);
+
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    
-    // Initialize animation handler with this window
-    AnimationHandler.initialize(mainWindow);
-    
-    if (options.animate) {
-      mainWindow.webContents.send('start-intro-animation');
+    clearTimeout(showTimeout);
+    showWindow();
+  });
+
+  // Fallback for Linux: show window when content finishes loading
+  mainWindow.webContents.once('did-finish-load', () => {
+    if (!windowShown && process.platform === 'linux') {
+      console.log('[linux] Window not shown yet, showing after did-finish-load');
+      clearTimeout(showTimeout);
+      showWindow();
     }
   });
 
