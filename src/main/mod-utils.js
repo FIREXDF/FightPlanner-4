@@ -5,27 +5,25 @@ const AdmZip = require('adm-zip');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
-
-const CONFLICT_WHITELIST_PATTERNS = [
-    'ui_chara_db.prcxml',
-    'info.toml',
-    'preview.webp',
-    'msg_name.xmsbt',
-    'config.json',
-    'msg_bgm.xmsbt',
-    'ui_chara_db.prcx',
-    'plugin.nro',
-    'victory.toml',
-    'README.txt'
-];
+const { CONFLICT_WHITELIST_PATTERNS } = require('./config');
 
 class ModUtils {
-
+    /**
+     * Get the path to the disabled mods folder
+     * @param {string} activeModsPath - Path to the active mods folder
+     * @returns {string} Path to the disabled mods folder
+     */
     static getDisabledModsFolder(activeModsPath) {
         const parentDir = path.dirname(activeModsPath);
         return path.join(parentDir, '{disabled_mod}');
     }
 
+    /**
+     * Read all mods from a folder
+     * @param {string} folderPath - Path to the folder containing mods
+     * @param {string} status - Status of the mods ('active' or 'disabled')
+     * @returns {Array<Object>} Array of mod objects with name, path, and status
+     */
     static readModsFromFolder(folderPath, status = 'active') {
         const mods = [];
 
@@ -54,6 +52,11 @@ class ModUtils {
         return mods;
     }
 
+    /**
+     * Get the path to the preview image for a mod
+     * @param {string} modFolderPath - Path to the mod folder
+     * @returns {string|null} Path to the preview image or null if not found
+     */
     static getPreviewImagePath(modFolderPath) {
         try {
             const previewPath = path.join(modFolderPath, 'preview.webp');
@@ -69,6 +72,11 @@ class ModUtils {
         }
     }
 
+    /**
+     * Convert a file path to a file:// URL
+     * @param {string} filePath - File path to convert
+     * @returns {string|null} File URL or null if path is invalid
+     */
     static pathToFileUrl(filePath) {
         if (!filePath) return null;
 
@@ -76,6 +84,11 @@ class ModUtils {
         return 'file://' + normalizedPath;
     }
 
+    /**
+     * Read mod information from info.toml file
+     * @param {string} modFolderPath - Path to the mod folder
+     * @returns {Object|null} Mod info object or null if not found/error
+     */
     static readModInfo(modFolderPath) {
         try {
             const infoPath = path.join(modFolderPath, 'info.toml');
@@ -154,6 +167,11 @@ class ModUtils {
         }
     }
 
+    /**
+     * Read all mods (active and disabled) from a mods directory
+     * @param {string} activeModsPath - Path to the active mods folder
+     * @returns {Object} Object with activeMods and disabledMods arrays
+     */
     static readAllMods(activeModsPath) {
         const activeMods = this.readModsFromFolder(activeModsPath, 'active');
 
@@ -169,6 +187,11 @@ class ModUtils {
         };
     }
 
+    /**
+     * Scan a mod folder for slot patterns (c00-c07)
+     * @param {string} modFolderPath - Path to the mod folder
+     * @returns {Array<Object>} Array of slot objects with slot number and files
+     */
     static scanModForSlots(modFolderPath) {
         const slots = {};
 
@@ -271,6 +294,153 @@ class ModUtils {
         }
     }
 
+    /**
+     * Get all used slots for a specific fighter across all active mods
+     * @param {string} modsPath - Path to the mods directory
+     * @param {string} fighterId - Fighter ID to check
+     * @param {string|null} excludeModPath - Optional mod path to exclude from check
+     * @returns {Array<number>} Array of used slot numbers (0-7)
+     */
+    static getUsedSlotsForFighter(modsPath, fighterId, excludeModPath = null) {
+        const usedSlots = new Set();
+        const slotPattern = /c0[0-7]/gi;
+
+        try {
+            const allMods = this.readAllMods(modsPath);
+            const activeMods = allMods.activeMods;
+
+            activeMods.forEach(mod => {
+                if (excludeModPath && mod.path === excludeModPath) {
+                    return;
+                }
+                const fighterPath = path.join(mod.path, 'fighter', fighterId);
+                
+                if (!fs.existsSync(fighterPath)) {
+                    return;
+                }
+
+                const scanFighterDirectory = (dirPath) => {
+                    if (!fs.existsSync(dirPath)) return;
+
+                    try {
+                        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+                        entries.forEach(entry => {
+                            const fullPath = path.join(dirPath, entry.name);
+
+                            if (entry.isDirectory()) {
+                                const matches = entry.name.match(slotPattern);
+                                if (matches) {
+                                    matches.forEach(match => {
+                                        const slotNum = parseInt(match.toLowerCase().charAt(2));
+                                        usedSlots.add(slotNum);
+                                    });
+                                }
+                                scanFighterDirectory(fullPath);
+                            } else if (entry.isFile()) {
+                                const matches = entry.name.match(slotPattern);
+                                if (matches) {
+                                    matches.forEach(match => {
+                                        const slotNum = parseInt(match.toLowerCase().charAt(2));
+                                        usedSlots.add(slotNum);
+                                    });
+                                }
+                            }
+                        });
+                    } catch (err) {
+                        console.warn(`Error scanning fighter directory ${dirPath}:`, err.message);
+                    }
+                };
+
+                scanFighterDirectory(fighterPath);
+            });
+
+            return Array.from(usedSlots).sort((a, b) => a - b);
+        } catch (error) {
+            console.error('Error getting used slots for fighter:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Find the first available slot number
+     * @param {Array<number>} usedSlots - Array of used slot numbers
+     * @returns {number|null} Available slot number or null if all slots are used
+     */
+    static findAvailableSlot(usedSlots) {
+        for (let i = 0; i <= 7; i++) {
+            if (!usedSlots.includes(i)) {
+                return i;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Scan a mod folder for slot patterns for a specific fighter
+     * @param {string} modFolderPath - Path to the mod folder
+     * @param {string} fighterId - Fighter ID to scan
+     * @returns {Array<number>} Array of slot numbers used by this fighter
+     */
+    static scanModForSlotsByFighter(modFolderPath, fighterId) {
+        const slots = new Set();
+        const slotPattern = /c0[0-7]/gi;
+
+        try {
+            const fighterPath = path.join(modFolderPath, 'fighter', fighterId);
+            
+            if (!fs.existsSync(fighterPath)) {
+                return [];
+            }
+
+            const scanFighterDirectory = (dirPath) => {
+                    if (!fs.existsSync(dirPath)) return;
+
+                    try {
+                        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+                        entries.forEach(entry => {
+                            const fullPath = path.join(dirPath, entry.name);
+
+                            if (entry.isDirectory()) {
+                                const matches = entry.name.match(slotPattern);
+                                if (matches) {
+                                    matches.forEach(match => {
+                                        const slotNum = parseInt(match.toLowerCase().charAt(2));
+                                        slots.add(slotNum);
+                                    });
+                                }
+                                scanFighterDirectory(fullPath);
+                            } else if (entry.isFile()) {
+                                const matches = entry.name.match(slotPattern);
+                                if (matches) {
+                                    matches.forEach(match => {
+                                        const slotNum = parseInt(match.toLowerCase().charAt(2));
+                                        slots.add(slotNum);
+                                    });
+                                }
+                            }
+                        });
+                    } catch (err) {
+                        console.warn(`Error scanning fighter directory ${dirPath}:`, err.message);
+                    }
+                };
+
+            scanFighterDirectory(fighterPath);
+
+            return Array.from(slots).sort((a, b) => a - b);
+        } catch (error) {
+            console.error('Error scanning mod slots for fighter:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Apply slot changes to a mod (rename files/folders with slot patterns)
+     * @param {string} modFolderPath - Path to the mod folder
+     * @param {Object} changes - Changes object with modifications array
+     * @returns {Object} Result object with success status
+     */
     static applySlotChanges(modFolderPath, changes) {
         try {
             const modificationsMap = new Map();
@@ -411,60 +581,67 @@ class ModUtils {
         }
     }
 
-    static detectConflicts(activeMods, whitelistPatterns = []) {
+    /**
+     * Detect file conflicts between active mods
+     * @param {Array<Object>} activeMods - Array of active mod objects
+     * @param {Array<string>} whitelistPatterns - Patterns to exclude from conflict detection
+     * @returns {Promise<Array<Object>>} Array of conflict objects with filePath and mods
+     */
+    static async detectConflicts(activeMods, whitelistPatterns = []) {
         const conflicts = [];
         const fileToMods = new Map();
         
         const allPatterns = [...CONFLICT_WHITELIST_PATTERNS, ...whitelistPatterns];
 
-        activeMods.forEach((mod, modIndex) => {
-            if (!mod.path || !fs.existsSync(mod.path)) return;
+        const scanMod = async (dirPath, relativePath = '', modIndex, modName, modPath) => {
+            if (!fs.existsSync(dirPath)) return;
 
-            const scanMod = (dirPath, relativePath = '') => {
-                if (!fs.existsSync(dirPath)) return;
+            try {
+                const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
 
-                try {
-                    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+                const tasks = entries.map(async (entry) => {
+                    const fullPath = path.join(dirPath, entry.name);
+                    const relPath = relativePath ? path.join(relativePath, entry.name) : entry.name;
 
-                    entries.forEach(entry => {
-                        const fullPath = path.join(dirPath, entry.name);
-                        const relPath = relativePath ? path.join(relativePath, entry.name) : entry.name;
-
-                        if (allPatterns.some(pattern => {
-                            if (typeof pattern === 'string') {
-                                return relPath.includes(pattern);
-                            }
-                            return false;
-                        })) {
-                            return;
+                    if (allPatterns.some(pattern => {
+                        if (typeof pattern === 'string') {
+                            return relPath.includes(pattern);
                         }
+                        return false;
+                    })) {
+                        return;
+                    }
 
-                        if (entry.isDirectory()) {
-                            try {
-                                scanMod(fullPath, relPath);
-                            } catch (err) {
-                            }
-                        } else if (entry.isFile()) {
-                            const normalizedPath = relPath.replace(/\\/g, '/');
-                            
-                            if (!fileToMods.has(normalizedPath)) {
-                                fileToMods.set(normalizedPath, []);
-                            }
-                            fileToMods.get(normalizedPath).push({
-                                modIndex,
-                                modName: mod.name,
-                                modPath: mod.path,
-                                filePath: normalizedPath
-                            });
+                    if (entry.isDirectory()) {
+                        await scanMod(fullPath, relPath, modIndex, modName, modPath);
+                    } else if (entry.isFile()) {
+                        const normalizedPath = relPath.replace(/\\/g, '/');
+                        
+                        // Accessing map safely without race conditions since node is single threaded for JS execution
+                        if (!fileToMods.has(normalizedPath)) {
+                            fileToMods.set(normalizedPath, []);
                         }
-                    });
-                } catch (error) {
-                    console.warn(`Error scanning directory ${dirPath}:`, error.message);
-                }
-            };
+                        fileToMods.get(normalizedPath).push({
+                            modIndex,
+                            modName,
+                            modPath,
+                            filePath: normalizedPath
+                        });
+                    }
+                });
 
-            scanMod(mod.path);
-        });
+                await Promise.all(tasks);
+            } catch (error) {
+                console.warn(`Error scanning directory ${dirPath}:`, error.message);
+            }
+        };
+
+        // Scan all mods in parallel
+        await Promise.all(activeMods.map(async (mod, modIndex) => {
+            if (mod.path && fs.existsSync(mod.path)) {
+                await scanMod(mod.path, '', modIndex, mod.name, mod.path);
+            }
+        }));
 
         fileToMods.forEach((modsList, filePath) => {
             if (modsList.length > 1) {
@@ -481,6 +658,12 @@ class ModUtils {
         return conflicts;
     }
 
+    /**
+     * Extract an archive file to a target directory
+     * @param {string} archivePath - Path to the archive file
+     * @param {string} targetPath - Target directory for extraction
+     * @throws {Error} If extraction fails
+     */
     static async extractArchive(archivePath, targetPath) {
         try {
             console.log("Extracting archive file...");
@@ -611,6 +794,12 @@ class ModUtils {
         }
     }
 
+    /**
+     * Install a mod from a source path (archive or directory) to the mods directory
+     * @param {string} sourcePath - Source path (archive file or directory)
+     * @param {string} modsPath - Destination mods directory
+     * @returns {Promise<Object>} Result object with success status, modPath, and modName
+     */
     static async installModFromPath(sourcePath, modsPath) {
         try {
             if (!fs.existsSync(sourcePath)) {

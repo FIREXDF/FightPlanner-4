@@ -102,7 +102,7 @@ class ModKeybindsHandler {
   async handleOpenModFile(selectedMod) {
     if (!selectedMod.folderPath) {
       if (window.toastManager) {
-        window.toastManager.error("Cannot open file - mod path not found");
+        window.toastManager.error("toasts.cannotOpenFile");
       }
       return;
     }

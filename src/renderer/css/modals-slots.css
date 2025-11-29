@@ -1,0 +1,20 @@
+.modal-large {
+    min-width: 600px;
+    width: 80vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-large .modal-body {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+}
+
+
+#change-slot-modal .modal-body {
+    overflow-y: auto;
+    height: auto;
+    max-height: 60vh;
+}

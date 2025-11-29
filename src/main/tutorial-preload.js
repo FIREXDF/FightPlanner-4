@@ -14,8 +14,12 @@ contextBridge.exposeInMainWorld('tutorialAPI', {
         console.log('IPC event "skip-tutorial" sent');
     },
     getMigrationStatus: () => ipcRenderer.invoke('get-migration-status'),
-    onAnimationComplete: (callback) => ipcRenderer.on('animation-complete', callback)
+    onAnimationComplete: (callback) => ipcRenderer.on('animation-complete', callback),
+    
+    // Settings & File System
+    selectFolder: () => ipcRenderer.invoke('select-folder'),
+    saveSetting: (key, value) => ipcRenderer.invoke('store-set', key, value),
+    getSetting: (key) => ipcRenderer.invoke('store-get', key)
 });
 
 console.log('tutorialAPI exposed to window');
-

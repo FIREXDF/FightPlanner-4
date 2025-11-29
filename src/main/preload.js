@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   maximize: () => ipcRenderer.send("maximize-window"),
   close: () => ipcRenderer.send("close-window"),
   selectFolder: () => ipcRenderer.invoke("select-folder"),
+  selectEmulatorFile: () => ipcRenderer.invoke("select-emulator-file"),
+  selectGameFile: () => ipcRenderer.invoke("select-game-file"),
   readModsFolder: (path) => ipcRenderer.invoke("read-mods-folder", path),
   getPreviewImage: (modPath) =>
     ipcRenderer.invoke("get-preview-image", modPath),
@@ -32,6 +34,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   togglePlugin: (pluginPath, pluginsBasePath) =>
     ipcRenderer.invoke("toggle-plugin", pluginPath, pluginsBasePath),
   deletePlugin: (pluginPath) => ipcRenderer.invoke("delete-plugin", pluginPath),
+  checkPluginUpdates: () => ipcRenderer.invoke("check-plugin-updates"),
+  updatePlugin: (pluginName, downloadUrl, pluginPath, targetVersion) =>
+    ipcRenderer.invoke("update-plugin", pluginName, downloadUrl, pluginPath, targetVersion),
+  getPluginRepoMapping: () => ipcRenderer.invoke("get-plugin-repo-mapping"),
+  setPluginRepoMapping: (pluginName, repoInput) =>
+    ipcRenderer.invoke("set-plugin-repo-mapping", pluginName, repoInput),
   store: {
     get: (key) => ipcRenderer.invoke("store-get", key),
     set: (key, value) => ipcRenderer.invoke("store-set", key, value),
@@ -43,6 +51,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("scan-mod-for-fighters", modPath),
 
   scanModSlots: (modPath) => ipcRenderer.invoke("scan-mod-slots", modPath),
+  scanModSlotsByFighter: (modPath, fighterId) =>
+    ipcRenderer.invoke("scan-mod-slots-by-fighter", modPath, fighterId),
+  getUsedSlotsForFighter: (modsPath, fighterId, excludeModPath = null) =>
+    ipcRenderer.invoke("get-used-slots-for-fighter", modsPath, fighterId, excludeModPath),
   applySlotChanges: (modPath, changes) =>
     ipcRenderer.invoke("apply-slot-changes", modPath, changes),
   detectConflicts: (modsPath, whitelistPatterns) =>
@@ -115,4 +127,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
       callback(data)
     );
   },
+
+  launchEmulator: (emulatorType, emulatorPath, gamePath, fullscreen) =>
+    ipcRenderer.invoke("launch-emulator", emulatorType, emulatorPath, gamePath, fullscreen),
+
+  loadLocale: (locale) => ipcRenderer.invoke("load-locale", locale),
+
+  onStartIntroAnimation: (callback) =>
+    ipcRenderer.on("start-intro-animation", (event, data) => callback(data)),
 });

@@ -55,7 +55,7 @@ class ModInfoEditor {
       
       if (result.success) {
         if (window.toastManager) {
-          window.toastManager.success('Info.toml saved successfully');
+          window.toastManager.success('toasts.infoTomlSaved');
         }
         
         if (window.modManager && window.modManager.selectedMod) {
@@ -63,13 +63,13 @@ class ModInfoEditor {
         }
       } else {
         if (window.toastManager) {
-          window.toastManager.error('Failed to save info.toml: ' + result.error);
+          window.toastManager.error('toasts.failedToSaveInfoToml', 3000, { error: result.error });
         }
       }
     } catch (error) {
       console.error('Error saving mod info:', error);
       if (window.toastManager) {
-        window.toastManager.error('Failed to save info.toml');
+        window.toastManager.error('toasts.failedToSaveInfoToml', 3000, { error: '' });
       }
     }
   }

@@ -13,7 +13,11 @@
     "build:test": "electron-builder --win portable --config",
     "build:win": "electron-builder --win --config",
     "build:all": "electron-builder -wml --config",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "i18n:upload": "crowdin upload sources",
+    "i18n:download": "crowdin download",
+    "i18n:status": "crowdin status",
+    "i18n:sync": "npm run i18n:upload && npm run i18n:download"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",

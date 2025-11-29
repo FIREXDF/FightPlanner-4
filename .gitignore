@@ -28,5 +28,8 @@ desktop.ini
 .env
 .env.local
 
+# Crowdin credentials
+.crowdinrc
+
 # Electron
 *.asar

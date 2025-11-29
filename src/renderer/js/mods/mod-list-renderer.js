@@ -54,7 +54,8 @@ class ModListRenderer {
 
     modItem.dataset.processed = "false";
 
-    modItem.style.animationDelay = `${index * 0.03}s`;
+    // Set CSS variable for staggered animation
+    modItem.style.setProperty("--mod-index", index);
 
     if (mod.status) {
       modItem.classList.add("mod-" + mod.status);
@@ -123,7 +124,7 @@ class ModListRenderer {
 
     if (mods.length === 0) {
       container.innerHTML =
-        '<p style="color: #666; text-align: center; padding: 20px;">No mods available</p>';
+        '<p style="color: var(--text-muted); text-align: center; padding: 20px;">No mods available</p>';
       return;
     }
 
@@ -151,7 +152,7 @@ class ModListRenderer {
 
     if (filteredMods.length === 0) {
       container.innerHTML =
-        '<p class="no-results-message" style="color: #666; text-align: center; padding: 20px;">No mods found</p>';
+        '<p class="no-results-message" style="color: var(--text-muted); text-align: center; padding: 20px;">No mods found</p>';
       return;
     }
 
@@ -228,7 +229,7 @@ class ModListRenderer {
     if (visibleCount === 0 && !existingMessage) {
       const message = document.createElement("p");
       message.className = "no-results-message";
-      message.style.cssText = "color: #666; text-align: center; padding: 20px;";
+      message.style.cssText = "color: var(--text-muted); text-align: center; padding: 20px;";
       message.textContent = "No mods found";
       container.appendChild(message);
     } else if (visibleCount > 0 && existingMessage) {

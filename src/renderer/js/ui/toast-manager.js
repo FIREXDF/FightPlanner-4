@@ -27,11 +27,45 @@ class ToastManager {
   }
 
   /**
-   * @param {string} type - Type of toast: 'success', 'error', 'warning', 'info'
-   * @param {string} message - Message to display
-   * @param {number} duration - Duration in ms (default: 3000)
+   * Translate message if it's a translation key, otherwise return as-is
+   * @param {string} message - Message or translation key
+   * @param {object} params - Parameters for translation
+   * @returns {string} Translated message
    */
-  show(type, message, duration = 3000) {
+  translateMessage(message, params = {}) {
+    if (!message) return "";
+    
+    // Check if message is a translation key (starts with "toasts.")
+    if (message.startsWith("toasts.")) {
+      if (window.i18n && window.i18n.t) {
+        let translated = window.i18n.t(message, params);
+        return translated || message;
+      }
+      // If i18n not available, return message as-is (fallback)
+      return message;
+    }
+    
+    // If not a translation key, return message as-is
+    // But still replace params if they exist
+    if (params && Object.keys(params).length > 0) {
+      let result = message;
+      for (const [key, value] of Object.entries(params)) {
+        result = result.replace(new RegExp(`{{${key}}}`, 'g'), value);
+      }
+      return result;
+    }
+    
+    return message;
+  }
+
+  /**
+   * @param {string} type - Type of toast: 'success', 'error', 'warning', 'info'
+   * @param {string} message - Message to display or translation key (e.g., "toasts.modInstalledSuccessfully")
+   * @param {number} duration - Duration in ms (default: 3000)
+   * @param {object} params - Parameters for translation (e.g., {name: "MyMod", error: "Error message"})
+   * @param {object} options - Additional options (e.g., {actionButton: {text: "View Logs", onClick: () => {}}})
+   */
+  show(type, message, duration = 3000, params = {}, options = {}) {
     if (!this.container) {
       this.setupContainer();
       if (!this.container) {
@@ -40,7 +74,12 @@ class ToastManager {
       }
     }
 
-    const toastKey = `${type}:${message}`;
+    const translatedMessage = this.translateMessage(message, params) || message || "";
+    if (!translatedMessage) {
+      console.warn("Toast message is empty, skipping");
+      return;
+    }
+    const toastKey = `${type}:${translatedMessage}`;
     const now = Date.now();
 
     if (this.toastHistory.has(toastKey)) {
@@ -85,9 +124,16 @@ class ToastManager {
         break;
     }
 
+    let actionButtonHtml = "";
+    if (options.actionButton) {
+      const actionText = options.actionButton.text || "Action";
+      actionButtonHtml = `<button class="toast-action-btn">${this.escapeHtml(actionText)}</button>`;
+    }
+
     toast.innerHTML = `
 ${icon}
-<span class="toast-message">${this.escapeHtml(message)}</span>
+<span class="toast-message">${this.escapeHtml(translatedMessage)}</span>
+${actionButtonHtml}
 <button class="toast-close">
 <i class="bi bi-x"></i>
 </button>
@@ -98,6 +144,16 @@ ${icon}
 
     const closeBtn = toast.querySelector(".toast-close");
     closeBtn.addEventListener("click", () => this.hide(toast));
+
+    if (options.actionButton && options.actionButton.onClick) {
+      const actionBtn = toast.querySelector(".toast-action-btn");
+      if (actionBtn) {
+        actionBtn.addEventListener("click", () => {
+          options.actionButton.onClick();
+          this.hide(toast);
+        });
+      }
+    }
 
     setTimeout(() => {
       toast.classList.add("toast-show");
@@ -126,20 +182,20 @@ ${icon}
     }, 300);
   }
 
-  success(message, duration) {
-    this.show("success", message, duration);
+  success(message, duration, params, options) {
+    this.show("success", message, duration, params, options);
   }
 
-  error(message, duration) {
-    this.show("error", message, duration);
+  error(message, duration, params, options) {
+    this.show("error", message, duration, params, options);
   }
 
-  warning(message, duration) {
-    this.show("warning", message, duration);
+  warning(message, duration, params, options) {
+    this.show("warning", message, duration, params, options);
   }
 
-  info(message, duration) {
-    this.show("info", message, duration);
+  info(message, duration, params, options) {
+    this.show("info", message, duration, params, options);
   }
 
   /**

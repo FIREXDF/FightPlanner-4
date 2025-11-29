@@ -24,15 +24,13 @@ class ModOperations {
           if (result.success) {
             console.log("Mod renamed successfully");
             if (window.toastManager) {
-              window.toastManager.success(`Mod renamed to "${newName}"`);
+              window.toastManager.success('toasts.modRenamed', 3000, { name: newName });
             }
 
             this.modManager.fetchMods();
           } else {
             if (window.toastManager) {
-              window.toastManager.error(
-                `Failed to rename mod: ${result.error}`
-              );
+              window.toastManager.error('toasts.failedToRenameMod', 3000, { error: result.error });
             }
           }
         }
@@ -43,7 +41,7 @@ class ModOperations {
   async toggleModStatus(mod) {
     if (!mod.folderPath || !this.modManager.modsPath) {
       if (window.toastManager) {
-        window.toastManager.error("Cannot toggle mod status - paths not found");
+        window.toastManager.error("toasts.cannotToggleModStatus");
       }
       return;
     }
@@ -59,15 +57,13 @@ class ModOperations {
           `Mod ${result.isNowActive ? "enabled" : "disabled"} successfully`
         );
         if (window.toastManager) {
-          window.toastManager.success(
-            `Mod ${result.isNowActive ? "enabled" : "disabled"}`
-          );
+          window.toastManager.success(result.isNowActive ? 'toasts.modEnabled' : 'toasts.modDisabled');
         }
 
         this.modManager.fetchMods();
       } else {
         if (window.toastManager) {
-          window.toastManager.error(`Failed to toggle mod: ${result.error}`);
+          window.toastManager.error('toasts.failedToToggleMod', 3000, { error: result.error });
         }
       }
     }
@@ -76,7 +72,7 @@ class ModOperations {
   async openModFolder(mod) {
     if (!mod.folderPath) {
       if (window.toastManager) {
-        window.toastManager.error("Cannot open folder - folder path not found");
+        window.toastManager.error("toasts.cannotOpenFolder");
       }
       return;
     }
@@ -86,7 +82,7 @@ class ModOperations {
 
       if (!result.success) {
         if (window.toastManager) {
-          window.toastManager.error(`Failed to open folder: ${result.error}`);
+          window.toastManager.error('toasts.failedToOpenFolder', 3000, { error: result.error });
         }
       }
     }
@@ -95,9 +91,7 @@ class ModOperations {
   async uninstallMod(mod) {
     if (!mod.folderPath) {
       if (window.toastManager) {
-        window.toastManager.error(
-          "Cannot uninstall this mod - folder path not found"
-        );
+        window.toastManager.error("toasts.cannotUninstallMod");
       }
       return;
     }
@@ -126,17 +120,13 @@ class ModOperations {
             }
 
             if (window.toastManager) {
-              window.toastManager.success(
-                `Mod "${mod.name}" has been uninstalled`
-              );
+              window.toastManager.success('toasts.modUninstalled');
             }
 
             this.modManager.fetchMods();
           } else {
             if (window.toastManager) {
-              window.toastManager.error(
-                `Failed to uninstall mod: ${result.error}`
-              );
+              window.toastManager.error('toasts.failedToUninstallMod', 3000, { error: result.error });
             }
           }
         }
@@ -147,7 +137,7 @@ class ModOperations {
   async changeSlot(mod) {
     if (!mod.folderPath) {
       if (window.toastManager) {
-        window.toastManager.error("Cannot change slot - folder path not found");
+        window.toastManager.error("toasts.cannotChangeSlot");
       }
       return;
     }
@@ -169,17 +159,13 @@ class ModOperations {
 
                 if (applyResult.success) {
                   if (window.toastManager) {
-                    window.toastManager.success(
-                      "Slot changes applied successfully"
-                    );
+                    window.toastManager.success('toasts.slotChanged');
                   }
 
                   this.modManager.fetchMods();
                 } else {
                   if (window.toastManager) {
-                    window.toastManager.error(
-                      `Failed to apply slot changes: ${applyResult.error}`
-                    );
+                    window.toastManager.error('toasts.failedToChangeSlot', 3000, { error: applyResult.error });
                   }
                 }
               }
@@ -188,9 +174,7 @@ class ModOperations {
         }
       } else {
         if (window.toastManager) {
-          window.toastManager.error(
-            `Failed to scan mod slots: ${result.error || "Unknown error"}`
-          );
+          window.toastManager.error('toasts.failedToChangeSlot', 3000, { error: result.error || "Unknown error" });
         }
       }
     }

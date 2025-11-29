@@ -80,11 +80,15 @@ class ModContextMenuHandler {
     const toggleText = document.getElementById("toggle-text");
     const toggleIcon = document.getElementById("toggle-icon");
 
+    const t = (key) => {
+      return window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+    };
+
     if (mod.status === "disabled") {
-      if (toggleText) toggleText.textContent = "Enable";
+      if (toggleText) toggleText.textContent = t("contextMenu.enable");
       if (toggleIcon) toggleIcon.className = "bi bi-toggle-off";
     } else {
-      if (toggleText) toggleText.textContent = "Disable";
+      if (toggleText) toggleText.textContent = t("contextMenu.disable");
       if (toggleIcon) toggleIcon.className = "bi bi-toggle-on";
     }
 

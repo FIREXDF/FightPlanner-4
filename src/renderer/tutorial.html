@@ -123,22 +123,26 @@
             filter: blur(0); /* Devient net pendant le slide */
         }
 
-        /* Tutorial container with steps - DARK SIMPLE */
+        /* Tutorial container with steps - MODERN GLASS */
         .tutorial-container {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) scale(0.9);
-            background: #1a1a1a; /* Dark simple, pas de dégradé */
-            border-radius: 20px;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 24px;
             width: 90%;
-            max-width: 700px;
+            max-width: 760px;
             max-height: 85vh;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 
+                0 24px 48px -12px rgba(0, 0, 0, 0.8),
+                0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+            border: 1px solid rgba(255, 255, 255, 0.05);
             z-index: 4;
             opacity: 0;
-            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
             display: none;
             flex-direction: column;
             overflow: hidden;
@@ -152,69 +156,70 @@
         /* Close button */
         .tutorial-close {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 36px;
-            height: 36px;
+            top: 24px;
+            right: 24px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s ease;
             z-index: 10;
-            font-size: 14px;
+            font-size: 16px;
         }
 
         .tutorial-close:hover {
-            background: rgba(255, 77, 77, 0.2);
-            border-color: #ff4d4d;
+            background: rgba(255, 77, 77, 0.15);
+            color: #ff4d4d;
             transform: rotate(90deg);
         }
 
-        /* Progress dots - DARK SIMPLE */
+        /* Progress dots - MODERN */
         .tutorial-progress {
             display: flex;
-            gap: 8px;
+            gap: 10px;
             justify-content: center;
-            padding: 24px 20px 16px;
-            background: #0d0d0d;
+            padding: 32px 20px 20px;
+            background: transparent;
         }
 
         .tutorial-progress-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.15);
-            transition: all 0.3s ease;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
         }
 
         .tutorial-progress-dot:hover {
             background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.2);
         }
 
         .tutorial-progress-dot.active {
-            width: 32px;
-            border-radius: 5px;
-            background: #7a9bff; /* Solid color, pas de dégradé */
-            box-shadow: 0 0 12px rgba(122, 155, 255, 0.4);
+            width: 36px;
+            background: #7a9bff;
+            box-shadow: 0 0 12px rgba(122, 155, 255, 0.3);
         }
 
         .tutorial-progress-dot.completed {
             background: #4caf50;
+            width: 8px;
         }
 
         /* Tutorial content */
         .tutorial-content {
             flex: 1;
             overflow-y: auto;
-            padding: 32px 40px;
-            transition: opacity 0.2s ease, transform 0.2s ease;
+            padding: 20px 48px 40px;
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
 
         .tutorial-content::-webkit-scrollbar {
@@ -222,12 +227,16 @@
         }
 
         .tutorial-content::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.1);
         }
 
         .tutorial-content::-webkit-scrollbar-thumb {
-            background: rgba(122, 155, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 3px;
+        }
+
+        .tutorial-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .tutorial-step {
@@ -237,25 +246,39 @@
 
         .tutorial-step-header {
             display: flex;
-            align-items: flex-start;
-            gap: 20px;
-            margin-bottom: 32px;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 36px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .tutorial-step-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
-            background: #7a9bff; /* Solid color, pas de dégradé */
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #7a9bff, #5a7bf0);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 8px 24px rgba(122, 155, 255, 0.25);
+            box-shadow: 0 12px 24px -6px rgba(90, 123, 240, 0.4);
+            position: relative;
+        }
+        
+        .tutorial-step-icon::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            background: linear-gradient(rgba(255,255,255,0.2), transparent);
         }
 
         .tutorial-step-icon i {
-            font-size: 28px;
+            font-size: 32px;
             color: #fff;
         }
 
@@ -264,29 +287,31 @@
         }
 
         .tutorial-step-title h2 {
-            margin: 0 0 8px 0;
-            font-size: 28px;
+            margin: 0 0 6px 0;
+            font-size: 32px;
             font-weight: 700;
             color: #fff;
+            letter-spacing: -0.5px;
         }
 
         .tutorial-step-title p {
             margin: 0;
-            font-size: 15px;
+            font-size: 16px;
             color: rgba(255, 255, 255, 0.6);
+            font-weight: 400;
         }
 
         .tutorial-step-content {
             color: rgba(255, 255, 255, 0.8);
             font-size: 15px;
-            line-height: 1.8;
+            line-height: 1.7;
         }
 
-        /* Navigation buttons - DARK SIMPLE */
+        /* Navigation buttons - REFINED */
         .tutorial-navigation {
-            padding: 20px 24px;
-            background: #0d0d0d; /* Dark simple */
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 24px 32px;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -306,46 +331,50 @@
             border: none;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.2s ease;
+            gap: 10px;
+            transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         .tutorial-btn i {
-            font-size: 14px;
+            font-size: 16px;
         }
 
         .tutorial-btn-primary {
-            background: #7a9bff; /* Solid color, pas de dégradé */
-            color: #fff;
-            box-shadow: 0 4px 12px rgba(122, 155, 255, 0.3);
+            background: #fff;
+            color: #111;
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
         }
 
         .tutorial-btn-primary:hover {
-            background: #6a8bef;
+            background: #f0f0f0;
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(122, 155, 255, 0.4);
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.15);
+        }
+        
+        .tutorial-btn-primary:active {
+            transform: translateY(0);
         }
 
         .tutorial-btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: transparent;
+            color: rgba(255, 255, 255, 0.5);
+            border: 1px solid transparent;
         }
 
         .tutorial-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #fff;
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .tutorial-btn-ghost {
-            background: transparent;
-            color: rgba(255, 255, 255, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            border: 1px solid transparent;
         }
 
         .tutorial-btn-ghost:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
         }
     </style>
 </head>
@@ -356,8 +385,8 @@
 
         <!-- Welcome text (appears after bubble expands to white) -->
         <div class="welcome-text" id="welcome-text">
-            <h1>Welcome to FightPlanner 4</h1>
-            <p>Your Ultimate Mod Manager</p>
+            <h1 data-i18n="tutorial.welcomeTitle">Welcome to FightPlanner 4</h1>
+            <p data-i18n="tutorial.welcomeSubtitle">Your Ultimate Mod Manager</p>
         </div>
 
         <!-- Screenshot preview (appears after welcome moves up) -->
@@ -380,14 +409,14 @@
             </div>
 
             <div class="tutorial-navigation">
-                <button class="tutorial-btn tutorial-btn-secondary" id="skip-btn">
+                <button class="tutorial-btn tutorial-btn-secondary" id="skip-btn" data-i18n="tutorial.skipTutorial">
                     Skip Tutorial
                 </button>
                 <div class="tutorial-nav-buttons">
-                    <button class="tutorial-btn tutorial-btn-ghost" id="prev-btn" style="display: none;">
+                    <button class="tutorial-btn tutorial-btn-ghost" id="prev-btn" style="display: none;" data-i18n="tutorial.previous">
                         <i class="bi bi-arrow-left"></i> Previous
                     </button>
-                    <button class="tutorial-btn tutorial-btn-primary" id="next-btn">
+                    <button class="tutorial-btn tutorial-btn-primary" id="next-btn" data-i18n="tutorial.next">
                         Next <i class="bi bi-arrow-right"></i>
                     </button>
                 </div>

@@ -217,7 +217,7 @@ class ModDragDropHandler {
     
     if (filePaths.length === 0) {
       if (window.toastManager) {
-        window.toastManager.error('Could not access file paths. Please use the Add button instead.');
+        window.toastManager.error('toasts.couldNotAccessFilePaths');
       }
       return;
     }
@@ -226,13 +226,13 @@ class ModDragDropHandler {
       const modsPath = await window.electronAPI.store.get('modsPath');
       if (!modsPath) {
         if (window.toastManager) {
-          window.toastManager.error('Mods folder not configured. Please set it in Settings.');
+          window.toastManager.error('toasts.modsFolderNotConfigured');
         }
         return;
       }
       
       if (window.toastManager) {
-        window.toastManager.info(`Installing ${filePaths.length} file(s)...`);
+        window.toastManager.info('toasts.installingFiles', 3000, { count: filePaths.length });
       }
       
       for (const filePath of filePaths) {
@@ -240,7 +240,7 @@ class ModDragDropHandler {
           const result = await window.electronAPI.installModFromPath(filePath, modsPath);
           if (result && result.success) {
             if (window.toastManager) {
-              window.toastManager.success(`Mod "${result.modName}" installed successfully!`);
+              window.toastManager.success('toasts.modInstalledSuccessfully', 3000, { name: result.modName });
             }
             
             setTimeout(() => {
@@ -250,12 +250,12 @@ class ModDragDropHandler {
             }, 500);
           } else {
             if (window.toastManager) {
-              window.toastManager.error(`Installation error: ${result?.error || 'Unknown error'}`);
+              window.toastManager.error('toasts.installationError', 3000, { error: result?.error || 'Unknown error' });
             }
           }
         } catch (error) {
           if (window.toastManager) {
-            window.toastManager.error(`Error installing mod: ${error.message}`);
+            window.toastManager.error('toasts.errorInstallingMod', 3000, { error: error.message });
           }
         }
       }

@@ -4,14 +4,34 @@ class StatusBarManager {
     this.currentTab = null;
   }
 
-  updateStatus(tabName) {
-    if (typeof tabName === 'string') {
-      this.currentTab = tabName;
+  t(key, params = {}) {
+    if (window.i18n && window.i18n.t) {
+      return window.i18n.t(key, params);
     }
+    return key;
+  }
+
+  updateStatus(tabName) {
     const statusText = document.querySelector(".bottom-text-left") || document.querySelector(".bottom-text");
     if (!statusText) return;
 
-    // Si aucun tabName n'est fourni et qu'on n'a pas de currentTab, ne pas modifier le statut
+    if (this.hasModalOpen()) {
+      return;
+    }
+
+    const validTabs = ["social", "downloads", "tools", "plugins", "settings", "characters", "stages", "fightplanner"];
+    
+    if (typeof tabName === 'string') {
+      if (validTabs.includes(tabName)) {
+        this.currentTab = tabName;
+      } else if (tabName.startsWith("statusBar.") || tabName.includes("...") || tabName.includes("…")) {
+        this.animateStatusChange(statusText, () => {
+          statusText.textContent = this.t(tabName);
+        });
+        return;
+      }
+    }
+
     if (!tabName && !this.currentTab) {
       return;
     }
@@ -51,29 +71,72 @@ class StatusBarManager {
             this.updateStagesStatus(statusText);
             break;
           default:
-            // Ne réinitialiser à "Ready" que si on n'a vraiment pas de tab actif
             if (!this.currentTab) {
-              statusText.textContent = "Ready";
+              return;
             }
-            // Sinon, garder le statut actuel (ne rien faire)
         }
       });
     }
   }
 
   animateStatusChange(statusText, callback) {
-    statusText.style.transition = "opacity 0.2s ease, transform 0.2s ease";
-    statusText.style.opacity = "0";
-    statusText.style.transform = "translateY(5px)";
+    const isReducedAnimations = document.body.classList.contains("reduced-animations");
+    const isNoAnimations = document.body.classList.contains("no-animations");
 
-    setTimeout(() => {
+    if (isNoAnimations) {
       callback();
+      return;
+    }
+
+    statusText.classList.add("status-changing");
+    
+    if (isReducedAnimations) {
+      statusText.style.transition = "opacity 0.1s ease";
+      statusText.style.opacity = "0";
+      setTimeout(() => {
+        callback();
+        setTimeout(() => {
+          statusText.style.opacity = "1";
+          statusText.style.transform = "translateY(0)";
+          statusText.classList.remove("status-changing");
+        }, 10);
+      }, 100);
+    } else {
+      statusText.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+      statusText.style.opacity = "0";
+      statusText.style.transform = "translateY(5px)";
 
       setTimeout(() => {
-        statusText.style.opacity = "1";
-        statusText.style.transform = "translateY(0)";
-      }, 10);
-    }, 200);
+        callback();
+
+        setTimeout(() => {
+          statusText.style.opacity = "1";
+          statusText.style.transform = "translateY(0)";
+          
+          setTimeout(() => {
+            statusText.style.transition = "";
+            statusText.style.opacity = "";
+            statusText.style.transform = "";
+            statusText.classList.remove("status-changing");
+          }, 200);
+        }, 10);
+      }, 200);
+    }
+  }
+
+  hasModalOpen() {
+    const overlay = document.getElementById("modal-overlay");
+    if (overlay && overlay.style.display === "block") {
+      return true;
+    }
+    
+    const allModals = document.querySelectorAll('.modal, .character-modal-overlay');
+    for (const modal of allModals) {
+      if (modal.style.display === "block" || modal.style.display === "flex") {
+        return true;
+      }
+    }
+    return false;
   }
 
   checkActiveDownloads() {
@@ -92,6 +155,10 @@ class StatusBarManager {
   }
 
   checkAndUpdateForDownloads() {
+    if (this.hasModalOpen()) {
+      return;
+    }
+    
     const statusText = document.querySelector(".bottom-text-left") || document.querySelector(".bottom-text");
     if (!statusText) return;
 
@@ -112,7 +179,7 @@ class StatusBarManager {
 
   async updateSocialStatus(statusText) {
     const updateStatus = async () => {
-      if (this.currentTab !== "social" || this.checkActiveDownloads()) {
+      if (this.currentTab !== "social" || this.checkActiveDownloads() || this.hasModalOpen()) {
         if (this.updateInterval) {
           clearInterval(this.updateInterval);
           this.updateInterval = null;
@@ -166,22 +233,23 @@ class StatusBarManager {
                 ).length;
               }
 
-              statusText.textContent = `Social • ${myMods.length} mod${
-                myMods.length !== 1 ? "s" : ""
-              } shared • ${friendsCount} friend${
-                friendsCount !== 1 ? "s" : ""
-              }`;
+              statusText.textContent = this.t("statusBar.socialModsShared", {
+                count: myMods.length,
+                plural: myMods.length !== 1 ? "s" : "",
+                friends: friendsCount,
+                friendsPlural: friendsCount !== 1 ? "s" : ""
+              });
             } else {
-              statusText.textContent = "Social • Connected";
+              statusText.textContent = this.t("statusBar.socialConnected");
             }
           } catch (e) {
-            statusText.textContent = "Social • Connected";
+            statusText.textContent = this.t("statusBar.socialConnected");
           }
         } else {
-          statusText.textContent = "Social • Not connected";
+          statusText.textContent = this.t("statusBar.socialNotConnected");
         }
       } catch (error) {
-        statusText.textContent = "Social • Ready";
+        statusText.textContent = this.t("statusBar.socialReady");
       }
     };
 
@@ -196,6 +264,10 @@ class StatusBarManager {
     let lastReceivedBytes = new Map();
 
     const updateStatus = () => {
+      if (this.hasModalOpen() && !this.checkActiveDownloads()) {
+        return;
+      }
+      
       try {
         // Check for FTP transfer first
         if (window.downloadManager && window.downloadManager.ftpTransfer) {
@@ -203,10 +275,19 @@ class StatusBarManager {
           const dots = ".".repeat(animationFrame % 4);
           animationFrame++;
           
-          let statusContent = `FTP • Sending to Switch${dots}`;
+          let statusContent;
           if (ftp.totalMods > 0) {
-            statusContent += ` • ${ftp.currentMod}/${ftp.totalMods} mods`;
+            statusContent = this.t("statusBar.ftpSending", {
+              current: ftp.currentMod || 0,
+              total: ftp.totalMods || 0
+            });
+          } else {
+            statusContent = this.t("statusBar.ftpSending", {
+              current: "",
+              total: ""
+            }).replace(" • / mods", "");
           }
+          statusContent += dots;
           
           statusText.innerHTML = statusContent;
           
@@ -283,11 +364,18 @@ class StatusBarManager {
             const animIndicator =
               activeCount > 1 ? ` [${activeCount} active]` : "";
 
-            let statusContent = `Downloads • ${shortFileName}${dots}`;
-            if (progressText) statusContent += ` • ${progressText}`;
-            if (sizeInfo) statusContent += ` • ${sizeInfo}`;
-            if (speedText) statusContent += ` • ${speedText}`;
-            statusContent += animIndicator;
+            let progressPart = progressText ? ` • ${progressText}` : "";
+            let sizePart = sizeInfo ? ` • ${sizeInfo}` : "";
+            let speedPart = speedText ? ` • ${speedText}` : "";
+            
+            let statusContent = this.t("statusBar.downloadsDownloading", {
+              fileName: shortFileName,
+              progress: progressPart,
+              size: sizePart,
+              speed: speedPart
+            });
+            statusContent += dots;
+            if (animIndicator) statusContent += animIndicator;
 
             statusText.innerHTML = statusContent;
 
@@ -310,16 +398,21 @@ class StatusBarManager {
             }
 
             if (this.currentTab !== "downloads") {
-              this.updateStatus(this.currentTab);
+              if (!this.hasModalOpen()) {
+                this.updateStatus(this.currentTab);
+              }
               return;
             }
 
-            if (completedCount > 0) {
-              statusText.textContent = `Downloads • ${completedCount} completed download${
-                completedCount !== 1 ? "s" : ""
-              }`;
-            } else {
-              statusText.textContent = "Downloads • No active downloads";
+            if (!this.hasModalOpen()) {
+              if (completedCount > 0) {
+                statusText.textContent = this.t("statusBar.downloadsCompleted", {
+                  count: completedCount,
+                  plural: completedCount !== 1 ? "s" : ""
+                });
+              } else {
+                statusText.textContent = this.t("statusBar.downloadsNoActive");
+              }
             }
           }
         } else {
@@ -335,22 +428,30 @@ class StatusBarManager {
           }
 
           if (this.currentTab !== "downloads") {
-            this.updateStatus(this.currentTab);
+            if (!this.hasModalOpen()) {
+              this.updateStatus(this.currentTab);
+            }
             return;
           }
 
-          statusText.textContent = "Downloads • Ready";
+          if (!this.hasModalOpen()) {
+            statusText.textContent = this.t("statusBar.downloadsReady");
+          }
         }
       } catch (error) {
         console.error("Status bar error:", error);
         statusText.classList.remove("status-downloading");
 
         if (this.currentTab !== "downloads") {
-          this.updateStatus(this.currentTab);
+          if (!this.hasModalOpen()) {
+            this.updateStatus(this.currentTab);
+          }
           return;
         }
 
-        statusText.textContent = "Downloads • Ready";
+        if (!this.hasModalOpen()) {
+          statusText.textContent = "Downloads • Ready";
+        }
       }
     };
 
@@ -380,11 +481,12 @@ class StatusBarManager {
           const completedCount =
             window.downloadManager?.completedDownloads?.length || 0;
           if (completedCount > 0) {
-            statusText.textContent = `Downloads • ${completedCount} completed download${
-              completedCount !== 1 ? "s" : ""
-            }`;
+            statusText.textContent = this.t("statusBar.downloadsCompleted", {
+              count: completedCount,
+              plural: completedCount !== 1 ? "s" : ""
+            });
           } else {
-            statusText.textContent = "Downloads • No active downloads";
+            statusText.textContent = this.t("statusBar.downloadsNoActive");
           }
         }
       }
@@ -415,7 +517,7 @@ class StatusBarManager {
    */
   updateToolsStatus(statusText) {
     const updateStatus = () => {
-      if (this.currentTab !== "tools" || this.checkActiveDownloads()) {
+      if (this.currentTab !== "tools" || this.checkActiveDownloads() || this.hasModalOpen()) {
         if (this.updateInterval) {
           clearInterval(this.updateInterval);
           this.updateInterval = null;
@@ -424,21 +526,26 @@ class StatusBarManager {
       }
 
       try {
-        if (window.modManager) {
-          const mods = window.modManager.mods || [];
+        if (window.modManager && window.modManager.mods) {
+          const mods = window.modManager.mods;
+          if (mods.length === 0) {
+            return;
+          }
           const enabledMods = mods.filter(
-            (mod) => mod.enabled !== false
+            (mod) => mod.status === "active"
           ).length;
           const totalMods = mods.length;
 
-          statusText.textContent = `Mods • ${enabledMods}/${totalMods} mod${
-            totalMods !== 1 ? "s" : ""
-          } enabled`;
+          statusText.textContent = this.t("statusBar.modsEnabled", {
+            enabled: enabledMods,
+            total: totalMods,
+            plural: totalMods !== 1 ? "s" : ""
+          });
         } else {
-          statusText.textContent = "Mods • Ready";
+          statusText.textContent = this.t("statusBar.modsReady");
         }
       } catch (error) {
-        statusText.textContent = "Mods • Ready";
+        statusText.textContent = this.t("statusBar.modsReady");
       }
     };
 
@@ -452,7 +559,7 @@ class StatusBarManager {
    */
   updatePluginsStatus(statusText) {
     const updateStatus = () => {
-      if (this.currentTab !== "plugins" || this.checkActiveDownloads()) {
+      if (this.currentTab !== "plugins" || this.checkActiveDownloads() || this.hasModalOpen()) {
         if (this.updateInterval) {
           clearInterval(this.updateInterval);
           this.updateInterval = null;
@@ -467,14 +574,16 @@ class StatusBarManager {
             (p) => p.enabled !== false
           ).length;
 
-          statusText.textContent = `Plugins • ${enabledPlugins}/${
-            plugins.length
-          } plugin${plugins.length !== 1 ? "s" : ""} enabled`;
+          statusText.textContent = this.t("statusBar.pluginsEnabled", {
+            enabled: enabledPlugins,
+            total: plugins.length,
+            plural: plugins.length !== 1 ? "s" : ""
+          });
         } else {
-          statusText.textContent = "Plugins • Ready";
+          statusText.textContent = this.t("statusBar.pluginsReady");
         }
       } catch (error) {
-        statusText.textContent = "Plugins • Ready";
+        statusText.textContent = this.t("statusBar.pluginsReady");
       }
     };
 
@@ -486,8 +595,7 @@ class StatusBarManager {
    * Update status for Settings tab
    */
   updateSettingsStatus(statusText) {
-    statusText.textContent =
-      "Settings • Configure your application preferences";
+    statusText.textContent = this.t("statusBar.settings");
   }
 
   /**
@@ -495,7 +603,7 @@ class StatusBarManager {
    */
   updateCharactersStatus(statusText) {
     const updateStatus = () => {
-      if (this.currentTab !== "characters" || this.checkActiveDownloads()) {
+      if (this.currentTab !== "characters" || this.checkActiveDownloads() || this.hasModalOpen()) {
         if (this.updateInterval) {
           clearInterval(this.updateInterval);
           this.updateInterval = null;
@@ -504,16 +612,22 @@ class StatusBarManager {
       }
 
       try {
-        if (window.charactersManager) {
-          const characters = window.charactersManager.characters || [];
-          statusText.textContent = `Characters • ${
-            characters.length
-          } character${characters.length !== 1 ? "s" : ""} available`;
+        if (window.charactersManager && window.charactersManager.characters) {
+          const characters = window.charactersManager.characters;
+          const count = characters instanceof Map ? characters.size : (Array.isArray(characters) ? characters.length : 0);
+          if (count > 0) {
+            statusText.textContent = this.t("statusBar.charactersAvailable", {
+              count: count,
+              plural: count !== 1 ? "s" : ""
+            });
+          } else {
+            statusText.textContent = this.t("statusBar.charactersReady");
+          }
         } else {
-          statusText.textContent = "Characters • Ready";
+          statusText.textContent = this.t("statusBar.charactersReady");
         }
       } catch (error) {
-        statusText.textContent = "Characters • Ready";
+        statusText.textContent = this.t("statusBar.charactersReady");
       }
     };
 
@@ -521,7 +635,7 @@ class StatusBarManager {
     this.updateInterval = setInterval(updateStatus, 10000);
   }
   updateStagesStatus(statusText) {
-    statusText.textContent = "Stages • Manage your custom stages";
+    statusText.textContent = this.t("statusBar.stages");
   }
 
   updateConflictStatus(conflictCount) {
@@ -542,7 +656,10 @@ class StatusBarManager {
           window.conflictModalManager.showConflictModal();
         }
       });
-      conflictText.textContent = `${conflictCount} conflict${conflictCount !== 1 ? 's' : ''} detected`;
+      conflictText.textContent = this.t("statusBar.conflictsDetected", {
+        count: conflictCount,
+        plural: conflictCount !== 1 ? 's' : ''
+      });
       statusRight.appendChild(conflictText);
     }
   }
@@ -553,16 +670,27 @@ class StatusBarManager {
       this.updateInterval = null;
     }
     const statusText = document.querySelector(".bottom-text-left") || document.querySelector(".bottom-text");
-    if (statusText) {
-      statusText.textContent = "Ready";
+    if (statusText && !this.currentTab) {
+      statusText.textContent = this.t("statusBar.ready");
     }
     const statusRight = document.querySelector(".bottom-text-right");
     if (statusRight) {
       statusRight.innerHTML = '';
     }
+    this.currentTab = null;
   }
 }
 
 if (typeof window !== "undefined") {
   window.statusBarManager = new StatusBarManager();
+  
+  // Écouter les changements de langue pour mettre à jour la status bar
+  window.addEventListener('localeChanged', () => {
+    if (window.statusBarManager && window.statusBarManager.currentTab) {
+      // Mettre à jour le statut avec l'onglet actuel pour appliquer les nouvelles traductions
+      setTimeout(() => {
+        window.statusBarManager.updateStatus(window.statusBarManager.currentTab);
+      }, 100);
+    }
+  });
 }

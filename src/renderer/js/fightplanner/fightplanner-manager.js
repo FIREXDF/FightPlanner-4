@@ -61,3 +61,4 @@ if (typeof window !== "undefined") {
   window.fightPlannerManager = new FightPlannerManager();
   console.log("FightPlanner Manager initialized globally");
 }
+

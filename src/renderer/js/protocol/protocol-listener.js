@@ -22,7 +22,7 @@ class ProtocolListener {
       }
 
       if (window.toastManager) {
-        window.toastManager.info("Download started...");
+        window.toastManager.info("toasts.downloadStarted");
       }
     });
 
@@ -60,7 +60,7 @@ class ProtocolListener {
       }
 
       if (window.toastManager) {
-        window.toastManager.success("Mod installed successfully! 🎉");
+        window.toastManager.success("toasts.modInstalledSuccess");
       }
 
       setTimeout(() => {
@@ -82,7 +82,7 @@ class ProtocolListener {
       }
 
       if (window.toastManager) {
-        window.toastManager.error(`Installation failed: ${data.error}`);
+        window.toastManager.error('toasts.installationFailed', 3000, { error: data.error });
       }
 
       if (data.downloadId) this.idMap.delete(data.downloadId);

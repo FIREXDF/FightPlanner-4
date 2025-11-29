@@ -3,9 +3,10 @@ const path = require("path");
 const fs = require("fs");
 const https = require("https");
 const http = require("http");
-const { exec } = require("child_process");
+const { exec, execSync } = require("child_process");
 const { promisify } = require("util");
 const execAsync = promisify(exec);
+const crypto = require("crypto");
 const AdmZip = require("adm-zip");
 const packageJson = require("../../package.json");
 const sharedStore = require("./store");
@@ -33,7 +34,7 @@ class ProtocolHandler {
       }
 
       this.registerProtocolInRegistry();
-    } else if (process.platform === "darwin" || process.platform === "linux") {
+    } else if (process.platform === "darwin") {
       try {
         const before = app.isDefaultProtocolClient
           ? app.isDefaultProtocolClient("fightplanner")
@@ -52,6 +53,94 @@ class ProtocolHandler {
           );
         } else {
           const ok = app.setAsDefaultProtocolClient("fightplanner");
+          console.log(
+            `[protocol][${process.platform}] register prod returned=${ok}`
+          );
+        }
+        const after = app.isDefaultProtocolClient
+          ? app.isDefaultProtocolClient("fightplanner")
+          : undefined;
+        console.log(
+          `[protocol][${process.platform}] after registration isDefault=${after}`
+        );
+      } catch (e) {
+        console.warn(
+          "Protocol registration skipped (" + process.platform + "):",
+          e.message
+        );
+      }
+    } else if (process.platform === "linux") {
+      try {
+        const before = app.isDefaultProtocolClient
+          ? app.isDefaultProtocolClient("fightplanner")
+          : undefined;
+        console.log(
+          `[protocol][${process.platform}] before registration isDefault=${before}`
+        );
+
+        // HACK: As `electron.app.setAsDefaultProtocolClient` is based on `xdg-settings set default-url-scheme-handler` 
+        // which is not supported on Xfce, we manually create new .desktop entry and use `xdg-mime` 
+        // to make it default handler for protocol URLs.
+        if (process.defaultApp && process.argv.length >= 2) {
+          const electronAppMainScriptPath = path.resolve(process.argv[1]);
+          
+          try {
+            const electronAppDesktopFileName = `fightplanner-protocol-${crypto.createHash("md5").update(`${process.execPath}${electronAppMainScriptPath}`).digest("hex")}.desktop`;
+            const electronAppDesktopFilePath = path.resolve(
+              app.getPath("home"),
+              ".local",
+              "share",
+              "applications",
+              electronAppDesktopFileName
+            );
+
+            fs.mkdirSync(
+              path.dirname(electronAppDesktopFilePath),
+              {
+                recursive: true,
+              }
+            );
+
+            const desktopFileContent = [
+              `[Desktop Entry]`,
+              `Name=FightPlanner (pid: ${process.pid})`,
+              `Exec=${process.execPath} ${electronAppMainScriptPath} %u`,
+              `Type=Application`,
+              `Terminal=false`,
+              `MimeType=x-scheme-handler/fightplanner;`
+            ].join("\n");
+
+            fs.writeFileSync(
+              electronAppDesktopFilePath,
+              desktopFileContent
+            );
+
+            console.log(`[protocol][linux] Created .desktop file: ${electronAppDesktopFilePath}`);
+
+            try {
+              execSync(`xdg-mime default ${electronAppDesktopFileName} x-scheme-handler/fightplanner`);
+              console.log(`[protocol][linux] Registered with xdg-mime`);
+            } catch (xdgError) {
+              console.warn(`[protocol][linux] xdg-mime registration failed:`, xdgError.message);
+            }
+          } catch (desktopError) {
+            console.warn(`[protocol][linux] Desktop file creation failed:`, desktopError.message);
+          }
+
+          const ok = app.setAsDefaultProtocolClient(
+            "fightplanner",
+            process.execPath,
+            [electronAppMainScriptPath]
+          );
+          console.log(
+            `[protocol][${process.platform}] register dev returned=${ok}`
+          );
+        } else {
+          const ok = app.setAsDefaultProtocolClient(
+            "fightplanner",
+            process.execPath,
+            []
+          );
           console.log(
             `[protocol][${process.platform}] register prod returned=${ok}`
           );

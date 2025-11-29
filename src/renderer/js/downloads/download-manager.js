@@ -453,7 +453,7 @@ async sendToSwitch() {
 // Check if Switch settings are configured
 if (!window.settingsManager || !window.settingsManager.hasSwitchConfig()) {
   if (window.toastManager) {
-    window.toastManager.error('Please configure Switch settings in Settings > Advanced');
+    window.toastManager.error('toasts.switchSettingsNotConfigured');
   } else {
     alert('Please configure Switch settings in Settings > Advanced');
   }
@@ -467,7 +467,7 @@ const switchFtpPath = window.settingsManager.getSwitchFtpPath() || '/switch';
 // Get mods path
 if (!window.settingsManager || !window.settingsManager.hasModsPath()) {
   if (window.toastManager) {
-    window.toastManager.error('Please set the mods folder path in Settings');
+    window.toastManager.error('toasts.modsFolderPathNotSet');
   } else {
     alert('Please set the mods folder path in Settings');
   }
@@ -485,14 +485,14 @@ const recentMods = this.completedDownloads.filter(download => {
 
 if (recentMods.length === 0) {
   if (window.toastManager) {
-    window.toastManager.info('No recent downloads to send. All mods will be synced.');
+    window.toastManager.info('toasts.noRecentDownloads');
   }
 }
 
 // Call the Electron API to send mods to Switch
 if (!window.electronAPI || !window.electronAPI.sendModsToSwitch) {
   if (window.toastManager) {
-    window.toastManager.error('FTP functionality not available');
+    window.toastManager.error('toasts.ftpNotAvailable');
   } else {
     alert('FTP functionality not available');
   }
@@ -503,7 +503,8 @@ if (!window.electronAPI || !window.electronAPI.sendModsToSwitch) {
 try {
   if (this.sendToSwitchBtn) {
     this.sendToSwitchBtn.disabled = true;
-    this.sendToSwitchBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Sending...';
+    const t = (key) => window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+    this.sendToSwitchBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> ${t('downloads.sending')}`;
   }
 
   // Update FTP transfer status
@@ -519,7 +520,7 @@ try {
   }
 
   if (window.toastManager) {
-    window.toastManager.info('Starting FTP transfer to Switch...');
+    window.toastManager.info('toasts.startingFtpTransfer');
   }
 
   const result = await window.electronAPI.sendModsToSwitch({
@@ -536,7 +537,8 @@ try {
 
   if (this.sendToSwitchBtn) {
     this.sendToSwitchBtn.disabled = false;
-    this.sendToSwitchBtn.innerHTML = '<i class="bi bi-device-hdd"></i> Send To Switch';
+    const t = (key) => window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+    this.sendToSwitchBtn.innerHTML = `<i class="bi bi-device-hdd"></i> ${t('downloads.sendToSwitch')}`;
   }
 
   // Clear FTP transfer status
@@ -544,11 +546,11 @@ try {
 
   if (result.success) {
     if (window.toastManager) {
-      window.toastManager.success(`Successfully sent ${result.transferredCount || 0} mods to Switch!`);
+      window.toastManager.success('toasts.modsSentToSwitch', 3000, { count: result.transferredCount || 0 });
     }
   } else {
     if (window.toastManager) {
-      window.toastManager.error(`Failed to send mods: ${result.error || 'Unknown error'}`);
+      window.toastManager.error('toasts.failedToSendMods', 3000, { error: result.error || 'Unknown error' });
     } else {
       alert(`Failed to send mods: ${result.error || 'Unknown error'}`);
     }
@@ -557,11 +559,12 @@ try {
   console.error('Error sending mods to Switch:', error);
   if (this.sendToSwitchBtn) {
     this.sendToSwitchBtn.disabled = false;
-    this.sendToSwitchBtn.innerHTML = '<i class="bi bi-device-hdd"></i> Send To Switch';
+    const t = (key) => window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+    this.sendToSwitchBtn.innerHTML = `<i class="bi bi-device-hdd"></i> ${t('downloads.sendToSwitch')}`;
   }
   this.ftpTransfer = null;
   if (window.toastManager) {
-    window.toastManager.error(`Error: ${error.message}`);
+    window.toastManager.error('toasts.failedToSendMods', 3000, { error: error.message });
   } else {
     alert(`Error: ${error.message}`);
   }
@@ -606,7 +609,7 @@ cancelDownload(downloadId) {
   }, 2000);
 
   if (window.toastManager) {
-    window.toastManager.warning('Download cancelled');
+    window.toastManager.warning('toasts.downloadCancelled');
   }
 }
 }

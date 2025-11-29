@@ -84,7 +84,7 @@ function initializeTabFeatures(tabName) {
             if (!window.electronAPI || !window.electronAPI.selectModFile) {
               console.error("electronAPI.selectModFile not available");
               if (window.toastManager) {
-                window.toastManager.error("Function not available");
+                window.toastManager.error("toasts.functionNotAvailable");
               }
               return;
             }
@@ -105,20 +105,20 @@ function initializeTabFeatures(tabName) {
             const modsPath = await window.electronAPI.store.get("modsPath");
             if (!modsPath) {
               if (window.toastManager) {
-                window.toastManager.error("Mods folder not configured. Please set it in Settings.");
+                window.toastManager.error("toasts.modsFolderNotConfigured");
               }
               return;
             }
 
             if (window.toastManager) {
-              window.toastManager.info("Installing mod...");
+              window.toastManager.info("toasts.installingMod");
             }
 
             const installResult = await window.electronAPI.installModFromPath(result.filePath, modsPath);
             
             if (installResult && installResult.success) {
               if (window.toastManager) {
-                window.toastManager.success(`Mod "${installResult.modName}" installed successfully!`);
+                window.toastManager.success('toasts.modInstalledSuccessfully', 3000, { name: installResult.modName });
               }
               setTimeout(() => {
                 if (window.modManager) {
@@ -127,13 +127,60 @@ function initializeTabFeatures(tabName) {
               }, 500);
             } else {
               if (window.toastManager) {
-                window.toastManager.error(`Installation error: ${installResult?.error || "Unknown error"}`);
+                window.toastManager.error('toasts.installationError', 3000, { error: installResult?.error || "Unknown error" });
               }
             }
           } catch (error) {
             console.error("Error installing mod:", error);
             if (window.toastManager) {
-              window.toastManager.error(`Error installing mod: ${error.message}`);
+              window.toastManager.error('toasts.errorInstallingMod', 3000, { error: error.message });
+            }
+          }
+        });
+      }
+      
+      if (title === "Play" && !btn.dataset.listenerAttached) {
+        btn.dataset.listenerAttached = "true";
+        btn.addEventListener("click", async () => {
+          try {
+            if (!window.settingsManager) {
+              if (window.toastManager) {
+                window.toastManager.error("toasts.settingsManagerNotAvailable");
+              }
+              return;
+            }
+
+            const emulatorType = window.settingsManager.getEmulatorType();
+            const emulatorPath = window.settingsManager.getEmulatorPath();
+            const gamePath = window.settingsManager.getGamePath();
+            const fullscreen = window.settingsManager.getEmulatorFullscreen();
+
+            if (!emulatorPath || !gamePath) {
+              if (window.toastManager) {
+                window.toastManager.warning("toasts.configureEmulatorPaths");
+              }
+              return;
+            }
+
+            if (window.toastManager) {
+              window.toastManager.info("toasts.launchingEmulator");
+            }
+
+            const result = await window.electronAPI.launchEmulator(emulatorType, emulatorPath, gamePath, fullscreen);
+
+            if (result.success) {
+              if (window.toastManager) {
+                window.toastManager.success("toasts.emulatorLaunchedSuccessfully");
+              }
+            } else {
+              if (window.toastManager) {
+                window.toastManager.error('toasts.failedToLaunchEmulator', 3000, { error: result.error });
+              }
+            }
+          } catch (error) {
+            console.error("Error launching emulator:", error);
+            if (window.toastManager) {
+              window.toastManager.error(`Error: ${error.message}`);
             }
           }
         });
@@ -201,6 +248,10 @@ function initializeTabFeatures(tabName) {
       window.modManager.reinitialize();
     }
 
+    if (window.i18n) {
+      window.i18n.updateDOM();
+    }
+
     // Delay fetching mods to ensure everything is loaded
     setTimeout(() => {
       if (window.modManager) {
@@ -233,10 +284,18 @@ function initializeTabFeatures(tabName) {
       console.log("Fetching plugins...");
       window.pluginManager.fetchPlugins();
     }
+    
+    if (window.i18n) {
+      window.i18n.updateDOM();
+    }
   }
 
   if (tabName === "settings" && window.settingsManager) {
     window.settingsManager.setupEventListeners();
+    
+    if (window.i18n) {
+      window.i18n.updateDOM();
+    }
   }
 
   if (tabName === "fightplanner") {
@@ -244,12 +303,20 @@ function initializeTabFeatures(tabName) {
       console.log("Initializing FightPlanner tab...");
       window.fightPlannerManager.initialize();
     }
+    
+    if (window.i18n) {
+      window.i18n.updateDOM();
+    }
   }
 
   if (tabName === "social") {
     if (window.socialManager) {
       console.log("Initializing Social tab...");
       window.socialManager.initialize();
+    }
+    
+    if (window.i18n) {
+      window.i18n.updateDOM();
     }
   }
   if (tabName === "characters") {
@@ -269,12 +336,20 @@ function initializeTabFeatures(tabName) {
         }
       });
     }
+    
+    if (window.i18n) {
+      window.i18n.updateDOM();
+    }
   }
 
   if (tabName === "downloads") {
     if (window.downloadManager) {
       console.log("Initializing Downloads tab...");
       window.downloadManager.initialize();
+    }
+    
+    if (window.i18n) {
+      window.i18n.updateDOM();
     }
   }
 }
@@ -288,6 +363,14 @@ async function loadTabContent(tabName) {
 
   if (tabElement.dataset.loaded === "true") {
     console.log(`Tab already loaded: ${tabName} - reinitializing features`);
+    // Reapply theme when reinitializing tab
+    if (window.settingsManager) {
+      const currentTheme = window.settingsManager.settings.theme || "dark";
+      window.settingsManager.applyTheme(currentTheme);
+    }
+    if (window.i18n) {
+      window.i18n.updateDOM();
+    }
     initializeTabFeatures(tabName);
     return;
   }
@@ -308,6 +391,17 @@ async function loadTabContent(tabName) {
 
     // Wait a bit for DOM to be ready before initializing features
     await new Promise(resolve => setTimeout(resolve, 50));
+    
+    // Reapply theme after loading tab content
+    if (window.settingsManager) {
+      const currentTheme = window.settingsManager.settings.theme || "dark";
+      window.settingsManager.applyTheme(currentTheme);
+    }
+    
+    if (window.i18n) {
+      window.i18n.updateDOM();
+    }
+    
     initializeTabFeatures(tabName);
   } catch (error) {
     console.error(`Error loading tab ${tabName}:`, error);
@@ -323,6 +417,12 @@ async function loadTabContent(tabName) {
 async function initializeTabs() {
   await loadTabContent("tools");
 }
+
+window.addEventListener('localeChanged', () => {
+  if (window.i18n) {
+    window.i18n.updateDOM();
+  }
+});
 
 window.tabLoader = {
   loadTabContent,

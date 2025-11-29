@@ -359,7 +359,7 @@ class SocialManager {
 
         if (!email || !password) {
           if (window.toastManager)
-            window.toastManager.error("Please enter email and password");
+            window.toastManager.error("toasts.pleaseEnterEmailAndPassword");
           return;
         }
 
@@ -373,12 +373,12 @@ class SocialManager {
         passInput.disabled = true;
 
         try {
-          if (window.toastManager) window.toastManager.info("Signing in...");
+          if (window.toastManager) window.toastManager.info("toasts.signingIn");
 
           await this.login(email, password);
 
           if (window.toastManager)
-            window.toastManager.success("Signed in successfully!");
+            window.toastManager.success("toasts.signedInSuccessfully");
 
           if (remember && remember.checked && window.electronAPI) {
             try {
@@ -392,9 +392,15 @@ class SocialManager {
 
           this.setupProtocolListeners();
         } catch (err) {
-          const errorMsg = err.message || "Login failed";
+          const errorMsg = err.message || "toasts.loginFailed";
           if (window.toastManager) {
-            window.toastManager.error(errorMsg);
+            // Si c'est une clé de traduction, utiliser directement, sinon utiliser le message d'erreur
+            if (errorMsg.startsWith("toasts.")) {
+              window.toastManager.error(errorMsg);
+            } else {
+              // Message d'erreur personnalisé, on le garde tel quel
+              window.toastManager.error(errorMsg);
+            }
           }
         } finally {
           if (submitButton) {
@@ -487,7 +493,7 @@ class SocialManager {
 
         if (!email) {
           if (window.toastManager)
-            window.toastManager.error("Please enter your email");
+            window.toastManager.error("toasts.pleaseEnterEmail");
           return;
         }
 
@@ -519,9 +525,11 @@ class SocialManager {
             let userMessage = "Failed to send reset email";
 
             if (errorMsg.includes("EMAIL_NOT_FOUND")) {
-              userMessage = "Email not found";
+              userMessage = "toasts.emailNotFound";
             } else if (errorMsg.includes("INVALID_EMAIL")) {
-              userMessage = "Invalid email address";
+              userMessage = "toasts.invalidEmail";
+            } else {
+              userMessage = "toasts.failedToSendResetEmail";
             }
 
             if (window.toastManager) window.toastManager.error(userMessage);
@@ -529,7 +537,7 @@ class SocialManager {
         } catch (error) {
           console.error("Password reset error:", error);
           if (window.toastManager)
-            window.toastManager.error("Failed to send reset email");
+            window.toastManager.error("toasts.failedToSendResetEmail");
         } finally {
           if (submitBtn) {
             submitBtn.disabled = false;
@@ -616,19 +624,19 @@ class SocialManager {
 
         if (!username || !email || !password || !passwordConfirm) {
           if (window.toastManager)
-            window.toastManager.error("Please fill all fields");
+            window.toastManager.error("toasts.pleaseFillAllFields");
           return;
         }
 
         if (password.length < 6) {
           if (window.toastManager)
-            window.toastManager.error("Password must be at least 6 characters");
+            window.toastManager.error("toasts.passwordMinLength");
           return;
         }
 
         if (password !== passwordConfirm) {
           if (window.toastManager)
-            window.toastManager.error("Passwords do not match");
+            window.toastManager.error("toasts.passwordsDoNotMatch");
           return;
         }
 
@@ -649,16 +657,14 @@ class SocialManager {
 
           if (response.ok && !data.error && data.localId) {
             if (window.toastManager) {
-              window.toastManager.success(
-                "Account created successfully! Signing in..."
-              );
+              window.toastManager.success("toasts.accountCreated");
             }
 
             try {
               await this.login(email, password);
 
               if (window.toastManager)
-                window.toastManager.success("Signed in successfully!");
+                window.toastManager.success("toasts.signedInSuccessfully");
 
               this.hideRegisterModal();
 
@@ -669,9 +675,7 @@ class SocialManager {
               this.setupProtocolListeners();
             } catch (loginError) {
               if (window.toastManager) {
-                window.toastManager.error(
-                  "Account created but failed to sign in. Please sign in manually."
-                );
+                window.toastManager.error("toasts.accountCreatedButFailedToSignIn");
               }
             }
           } else {
@@ -679,11 +683,13 @@ class SocialManager {
             let userMessage = "Failed to create account";
 
             if (errorMsg.includes("EMAIL_EXISTS")) {
-              userMessage = "Email already exists";
+              userMessage = "toasts.emailAlreadyExists";
             } else if (errorMsg.includes("INVALID_EMAIL")) {
-              userMessage = "Invalid email address";
+              userMessage = "toasts.invalidEmail";
             } else if (errorMsg.includes("WEAK_PASSWORD")) {
-              userMessage = "Password is too weak";
+              userMessage = "toasts.weakPassword";
+            } else {
+              userMessage = "toasts.failedToCreateAccount";
             }
 
             if (window.toastManager) window.toastManager.error(userMessage);
@@ -691,7 +697,7 @@ class SocialManager {
         } catch (error) {
           console.error("Registration error:", error);
           if (window.toastManager)
-            window.toastManager.error("Failed to create account");
+            window.toastManager.error("toasts.failedToCreateAccount");
         } finally {
           if (submitBtn) {
             submitBtn.disabled = false;
@@ -1196,13 +1202,13 @@ class SocialManager {
       } else {
         console.error("Failed to load user profile:", data);
         if (window.toastManager) {
-          window.toastManager.error("Failed to load profile data");
+          window.toastManager.error("toasts.failedToLoadProfileData");
         }
       }
     } catch (error) {
       console.error("Error loading user profile:", error);
       if (window.toastManager) {
-        window.toastManager.error("Failed to load profile");
+        window.toastManager.error("toasts.failedToLoadProfile");
       }
     }
   }
@@ -1579,7 +1585,7 @@ class SocialManager {
 
       if (response.ok && !data.error) {
         if (window.toastManager)
-          window.toastManager.success("Friend request sent!");
+          window.toastManager.success("toasts.friendRequestSent");
         if (addFriendText) addFriendText.textContent = "Request Sent";
         if (addFriendBtn) {
           addFriendBtn.disabled = true;
@@ -1587,7 +1593,7 @@ class SocialManager {
             addFriendBtn.setAttribute("data-request-id", data.friendRequestId);
         }
       } else {
-        const errorMsg = data.error || "Failed to send friend request";
+        const errorMsg = data.error || "toasts.failedToSendFriendRequest";
         if (window.toastManager) window.toastManager.error(errorMsg);
         if (addFriendBtn) addFriendBtn.disabled = false;
         if (addFriendText) addFriendText.textContent = "Add Friend";
@@ -1595,7 +1601,7 @@ class SocialManager {
     } catch (error) {
       console.error("[Social] Error sending friend request:", error);
       if (window.toastManager)
-        window.toastManager.error("Failed to send friend request");
+        window.toastManager.error("toasts.failedToSendFriendRequest");
       if (addFriendBtn) addFriendBtn.disabled = false;
       if (addFriendText) addFriendText.textContent = "Add Friend";
     }
@@ -1618,17 +1624,17 @@ class SocialManager {
 
       if (response.ok && !data.error) {
         if (window.toastManager)
-          window.toastManager.success("Friend request accepted!");
+          window.toastManager.success("toasts.friendRequestAccepted");
 
         this.loadFriends();
       } else {
-        const errorMsg = data.error || "Failed to accept friend request";
+        const errorMsg = data.error || "toasts.failedToAcceptFriendRequest";
         if (window.toastManager) window.toastManager.error(errorMsg);
       }
     } catch (error) {
       console.error("[Social] Error accepting friend request:", error);
       if (window.toastManager)
-        window.toastManager.error("Failed to accept friend request");
+        window.toastManager.error("toasts.failedToAcceptFriendRequest");
     }
   }
 
@@ -1649,17 +1655,17 @@ class SocialManager {
 
       if (response.ok && !data.error) {
         if (window.toastManager)
-          window.toastManager.success("Friend request rejected");
+          window.toastManager.success("toasts.friendRequestRejected");
 
         this.loadFriends();
       } else {
-        const errorMsg = data.error || "Failed to reject friend request";
+        const errorMsg = data.error || "toasts.failedToRejectFriendRequest";
         if (window.toastManager) window.toastManager.error(errorMsg);
       }
     } catch (error) {
       console.error("[Social] Error rejecting friend request:", error);
       if (window.toastManager)
-        window.toastManager.error("Failed to reject friend request");
+        window.toastManager.error("toasts.failedToRejectFriendRequest");
     }
   }
 
@@ -1721,7 +1727,7 @@ class SocialManager {
         document.querySelectorAll(".social-modal")
       );
       if (window.toastManager) {
-        window.toastManager.error("Modal not found. Please refresh the page.");
+        window.toastManager.error("toasts.modalNotFound");
       }
       return;
     }
@@ -1817,17 +1823,17 @@ class SocialManager {
 
       if (response.ok && !data.error) {
         this.hideRemoveFriendModal();
-        if (window.toastManager) window.toastManager.success("Friend removed");
+        if (window.toastManager) window.toastManager.success("toasts.friendRemoved");
 
         this.loadFriends();
       } else {
-        const errorMsg = data.error || "Failed to remove friend";
+        const errorMsg = data.error || "toasts.failedToRemoveFriend";
         if (window.toastManager) window.toastManager.error(errorMsg);
       }
     } catch (error) {
       console.error("[Social] Error removing friend:", error);
       if (window.toastManager)
-        window.toastManager.error("Failed to remove friend");
+        window.toastManager.error("toasts.failedToRemoveFriend");
     }
   }
 
@@ -2086,7 +2092,7 @@ class SocialManager {
 
     if (isNaN(intervalMinutes) || intervalMinutes < 1 || intervalMinutes > 60) {
       if (window.toastManager)
-        window.toastManager.error("Interval must be between 1 and 60 minutes");
+        window.toastManager.error("toasts.intervalMustBeBetween");
       return;
     }
 
@@ -2102,7 +2108,7 @@ class SocialManager {
     }
 
     if (window.toastManager)
-      window.toastManager.success("Auto-download settings saved!");
+      window.toastManager.success("toasts.autoDownloadSettingsSaved");
   }
 
   async updateUsername() {
@@ -2112,7 +2118,7 @@ class SocialManager {
     const newUsername = usernameInput.value.trim();
     if (!newUsername) {
       if (window.toastManager)
-        window.toastManager.error("Username cannot be empty");
+        window.toastManager.error("toasts.usernameCannotBeEmpty");
       return;
     }
 
@@ -2144,15 +2150,15 @@ class SocialManager {
         if (usernameEl) usernameEl.textContent = newUsername;
 
         if (window.toastManager)
-          window.toastManager.success("Username updated!");
+          window.toastManager.success("toasts.usernameUpdated");
       } else {
-        const errorMsg = data.error?.message || "Failed to update username";
+        const errorMsg = data.error?.message || "toasts.failedToUpdateUsername";
         if (window.toastManager) window.toastManager.error(errorMsg);
       }
     } catch (error) {
       console.error("Error updating username:", error);
       if (window.toastManager)
-        window.toastManager.error("Failed to update username");
+        window.toastManager.error("toasts.failedToUpdateUsername");
     }
   }
 
@@ -2185,15 +2191,15 @@ class SocialManager {
 
       if (response.ok && data.success) {
         if (window.toastManager)
-          window.toastManager.success("Privacy settings updated!");
+          window.toastManager.success("toasts.privacySettingsUpdated");
       } else {
-        const errorMsg = data.error || "Failed to update privacy settings";
+        const errorMsg = data.error || "toasts.failedToUpdatePrivacySettings";
         if (window.toastManager) window.toastManager.error(errorMsg);
       }
     } catch (error) {
       console.error("Error updating privacy settings:", error);
       if (window.toastManager)
-        window.toastManager.error("Failed to update privacy settings");
+        window.toastManager.error("toasts.failedToUpdatePrivacySettings");
     }
   }
 
@@ -2229,7 +2235,7 @@ class SocialManager {
       this.showLoginScreen();
 
       if (window.toastManager)
-        window.toastManager.success("Logged out successfully");
+        window.toastManager.success("toasts.loggedOutSuccessfully");
     } catch (error) {
       console.error("Logout error:", error);
 

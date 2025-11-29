@@ -25,8 +25,12 @@ class ModInfoManager {
       return div.innerHTML;
     };
 
+    const t = (key) => {
+      return window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+    };
+
     const formatDescription = (desc) => {
-      if (!desc) return "No description available";
+      if (!desc) return t("tools.modInfo.noDescription");
       return escapeHtml(desc).replace(/\n/g, "<br>");
     };
 
@@ -35,7 +39,7 @@ class ModInfoManager {
     if (modData.display_name) {
       html += `
 <div class="mod-info-item">
-<div class="mod-info-label">Name</div>
+<div class="mod-info-label">${t("tools.modInfo.name")}</div>
 <div class="mod-info-value">${escapeHtml(modData.display_name)}</div>
 </div>`;
     }
@@ -43,7 +47,7 @@ class ModInfoManager {
     if (modData.authors) {
       html += `
 <div class="mod-info-item">
-<div class="mod-info-label">Authors</div>
+<div class="mod-info-label">${t("tools.modInfo.authors")}</div>
 <div class="mod-info-value">${escapeHtml(modData.authors)}</div>
 </div>`;
     }
@@ -51,7 +55,7 @@ class ModInfoManager {
     if (modData.version) {
       html += `
 <div class="mod-info-item">
-<div class="mod-info-label">Version</div>
+<div class="mod-info-label">${t("tools.modInfo.version")}</div>
 <div class="mod-info-value">${escapeHtml(modData.version)}</div>
 </div>`;
     }
@@ -59,7 +63,7 @@ class ModInfoManager {
     if (modData.category) {
       html += `
 <div class="mod-info-item">
-<div class="mod-info-label">Category</div>
+<div class="mod-info-label">${t("tools.modInfo.category")}</div>
 <div class="mod-info-value">${escapeHtml(modData.category)}</div>
 </div>`;
     }
@@ -67,7 +71,7 @@ class ModInfoManager {
     if (modData.description) {
       html += `
 <div class="mod-info-item">
-<div class="mod-info-label">Description</div>
+<div class="mod-info-label">${t("tools.modInfo.description")}</div>
 <div class="mod-info-value mod-info-description">${formatDescription(
         modData.description
       )}</div>
@@ -77,7 +81,7 @@ class ModInfoManager {
     if (modData.url) {
       html += `
 <div class="mod-info-item">
-<div class="mod-info-label">URL</div>
+<div class="mod-info-label">${t("tools.modInfo.url")}</div>
 <div class="mod-info-value">
 <a href="#" onclick="window.electronAPI.openUrl('${escapeHtml(
         modData.url
@@ -89,7 +93,7 @@ ${escapeHtml(modData.url)}
     }
 
     if (html === "") {
-      html = '<p class="mod-info-placeholder">No information available</p>';
+      html = `<p class="mod-info-placeholder">${t("tools.modInfo.noInformation")}</p>`;
     }
 
     container.style.animation = "none";
@@ -107,8 +111,11 @@ ${escapeHtml(modData.url)}
   clearModInfo() {
     const container = this.getContainer();
     if (!container) return;
+    const t = (key) => {
+      return window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+    };
     container.innerHTML =
-      '<p class="mod-info-placeholder">Select a mod to view details</p>';
+      `<p class="mod-info-placeholder">${t("tools.selectMod")}</p>`;
     
     this.currentModPath = null;
     this.currentModData = null;
@@ -122,7 +129,10 @@ ${escapeHtml(modData.url)}
   showLoading() {
     const container = this.getContainer();
     if (!container) return;
-    container.innerHTML = '<p class="mod-info-placeholder">Loading...</p>';
+    const t = (key) => {
+      return window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+    };
+    container.innerHTML = `<p class="mod-info-placeholder">${t("tools.modInfo.loading")}</p>`;
     
     const editBtn = document.getElementById("edit-info-btn");
     if (editBtn) {
@@ -133,7 +143,11 @@ ${escapeHtml(modData.url)}
   showError(message) {
     const container = this.getContainer();
     if (!container) return;
-    container.innerHTML = `<p class="mod-info-placeholder" style="color: #ff4444;">${message}</p>`;
+    const t = (key) => {
+      return window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+    };
+    const errorMessage = message || t("tools.modInfo.failedToLoad");
+    container.innerHTML = `<p class="mod-info-placeholder" style="color: #ff4444;">${errorMessage}</p>`;
     
     const editBtn = document.getElementById("edit-info-btn");
     if (editBtn) {

@@ -158,18 +158,18 @@ class LogsManager {
           await window.electronAPI.openFolder(logsPath);
           
           if (window.toastManager) {
-            window.toastManager.success('Logs folder opened');
+            window.toastManager.success('toasts.logsFolderOpened');
           }
         }
       } else {
         if (window.toastManager) {
-          window.toastManager.error('Cannot open logs folder');
+          window.toastManager.error('toasts.cannotOpenLogsFolder');
         }
       }
     } catch (error) {
       console.error('Error opening logs folder:', error);
       if (window.toastManager) {
-        window.toastManager.error('Failed to open logs folder');
+        window.toastManager.error('toasts.failedToOpenLogsFolder');
       }
     }
   }
@@ -184,12 +184,12 @@ class LogsManager {
 
       navigator.clipboard.writeText(logsText).then(() => {
         if (window.toastManager) {
-          window.toastManager.success('Logs copied to clipboard');
+          window.toastManager.success('toasts.logsCopiedToClipboard');
         }
       }).catch(err => {
         console.error('Failed to copy logs:', err);
         if (window.toastManager) {
-          window.toastManager.error('Failed to copy logs');
+          window.toastManager.error('toasts.failedToCopyLogs');
         }
       });
     } catch (error) {

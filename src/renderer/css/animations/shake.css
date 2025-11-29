@@ -1,0 +1,19 @@
+
+@keyframes shake {
+    0%, 100% { transform: translate(-50%, -50%); }
+    10%, 30%, 50%, 70%, 90% { transform: translate(-50%, -50%) translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translate(-50%, -50%) translateX(5px); }
+}
+
+.shake-animation {
+    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+
+
+
+
+
+
+
+

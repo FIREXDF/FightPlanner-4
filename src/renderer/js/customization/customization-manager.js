@@ -102,7 +102,7 @@ class CustomizationManager {
       // Check if already added
       if (this.customCssFiles.find(f => f.path === result.filePath)) {
         if (window.toastManager) {
-          window.toastManager.warning('This CSS file is already loaded');
+          window.toastManager.warning('toasts.cssFileAlreadyLoaded');
         }
         return;
       }
@@ -112,12 +112,12 @@ class CustomizationManager {
       this.renderCssList();
 
       if (window.toastManager) {
-        window.toastManager.success('Custom CSS added successfully');
+        window.toastManager.success('toasts.customCssAdded');
       }
     } catch (error) {
       console.error('Error adding custom CSS:', error);
       if (window.toastManager) {
-        window.toastManager.error('Failed to add custom CSS');
+        window.toastManager.error('toasts.failedToAddCustomCss');
       }
     }
   }
@@ -139,7 +139,7 @@ class CustomizationManager {
       // Check if already added
       if (this.customJsFiles.find(f => f.path === result.filePath)) {
         if (window.toastManager) {
-          window.toastManager.warning('This JavaScript file is already loaded');
+          window.toastManager.warning('toasts.jsFileAlreadyLoaded');
         }
         return;
       }
@@ -149,7 +149,7 @@ class CustomizationManager {
     } catch (error) {
       console.error('Error adding custom JS:', error);
       if (window.toastManager) {
-        window.toastManager.error('Failed to select JavaScript file');
+        window.toastManager.error('toasts.failedToSelectJsFile');
       }
     }
   }
@@ -173,12 +173,12 @@ class CustomizationManager {
       this.updateCssPathUI(result.filePath);
 
       if (window.toastManager) {
-        window.toastManager.success('Custom CSS loaded successfully');
+        window.toastManager.success('toasts.customCssLoaded');
       }
     } catch (error) {
       console.error('Error browsing custom CSS:', error);
       if (window.toastManager) {
-        window.toastManager.error('Failed to load custom CSS');
+        window.toastManager.error('toasts.failedToLoadCustomCss');
       }
     }
   }
@@ -201,7 +201,7 @@ class CustomizationManager {
     } catch (error) {
       console.error('Error browsing custom JS:', error);
       if (window.toastManager) {
-        window.toastManager.error('Failed to select JavaScript file');
+        window.toastManager.error('toasts.failedToSelectJsFile');
       }
     }
   }
@@ -250,6 +250,10 @@ class CustomizationManager {
   }
 
   showCustomModal(title, message, onConfirm, requireCheckbox = false) {
+    const t = (key, params = {}) => {
+      return window.i18n && window.i18n.t ? window.i18n.t(key, params) : key;
+    };
+
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.id = 'custom-warning-modal';
@@ -274,10 +278,10 @@ class CustomizationManager {
       </div>
       <div class="modal-footer">
         <button class="modal-btn modal-btn-cancel" id="custom-modal-cancel-btn">
-          <i class="bi bi-x-lg"></i> Cancel
+          <i class="bi bi-x-lg"></i> ${t("common.cancel")}
         </button>
         <button class="modal-btn ${requireCheckbox ? 'modal-btn-danger' : 'modal-btn-primary'}" id="custom-modal-confirm-btn" ${requireCheckbox ? 'disabled' : ''}>
-          ${requireCheckbox ? '<i class="bi bi-shield-exclamation"></i> Load JavaScript File' : '<i class="bi bi-check-lg"></i> Confirm'}
+          ${requireCheckbox ? `<i class="bi bi-shield-exclamation"></i> ${t("customization.loadJsFile")}` : `<i class="bi bi-check-lg"></i> ${t("customization.confirm")}`}
         </button>
       </div>
     `;
@@ -342,12 +346,12 @@ class CustomizationManager {
       this.renderJsList();
 
       if (window.toastManager) {
-        window.toastManager.success('Custom JavaScript loaded successfully');
+        window.toastManager.success('toasts.customJsLoaded');
       }
     } catch (error) {
       console.error('Error loading custom JS:', error);
       if (window.toastManager) {
-        window.toastManager.error('Failed to load custom JavaScript');
+        window.toastManager.error('toasts.failedToLoadCustomJs');
       }
     } finally {
       this.pendingJsPath = null;
@@ -440,7 +444,7 @@ class CustomizationManager {
     this.renderCssList();
 
     if (window.toastManager) {
-      window.toastManager.success('CSS file removed');
+      window.toastManager.success('toasts.cssFileRemoved');
     }
   }
 
@@ -458,7 +462,7 @@ class CustomizationManager {
     this.renderJsList();
 
     if (window.toastManager) {
-      window.toastManager.success('JS file removed. Please restart for full effect.');
+      window.toastManager.success('toasts.jsFileRemoved');
     }
   }
 
@@ -476,7 +480,7 @@ class CustomizationManager {
     this.renderCssList();
 
     if (window.toastManager) {
-      window.toastManager.success('CSS file reloaded');
+      window.toastManager.success('toasts.cssFileReloaded');
     }
   }
 
@@ -499,7 +503,7 @@ class CustomizationManager {
     this.renderCssList();
 
     if (window.toastManager) {
-      window.toastManager.success('All CSS files reloaded');
+      window.toastManager.success('toasts.allCssFilesReloaded');
     }
   }
 
@@ -680,7 +684,7 @@ class CustomizationManager {
     this.updateCssPathUI('');
 
     if (window.toastManager) {
-      window.toastManager.success('Custom CSS removed');
+      window.toastManager.success('toasts.customCssRemoved');
     }
   }
 
@@ -698,7 +702,7 @@ class CustomizationManager {
     this.updateJsPathUI('');
 
     if (window.toastManager) {
-      window.toastManager.success('Custom JavaScript removed. Please restart the app for full effect.');
+      window.toastManager.success('toasts.customJsRemoved');
     }
   }
 
@@ -710,7 +714,7 @@ class CustomizationManager {
       
       if (!customCssPath) {
         if (window.toastManager) {
-          window.toastManager.info('No custom CSS to reload');
+          window.toastManager.info('toasts.noCustomCssToReload');
         }
         return;
       }
@@ -718,12 +722,12 @@ class CustomizationManager {
       await this.loadCustomCss(customCssPath);
 
       if (window.toastManager) {
-        window.toastManager.success('Custom CSS reloaded');
+        window.toastManager.success('toasts.cssFileReloaded');
       }
     } catch (error) {
       console.error('Error reloading custom CSS:', error);
       if (window.toastManager) {
-        window.toastManager.error('Failed to reload custom CSS');
+        window.toastManager.error('toasts.failedToReloadCustomCss');
       }
     }
   }

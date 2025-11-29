@@ -164,7 +164,6 @@ class ModManager {
 
     const isSameMod = this.selectedMod && this.selectedMod.id === modId;
     
-    // Always update DOM selection classes
     const allModItems = this.modListContainer.querySelectorAll(".mod-item");
     allModItems.forEach((item) => {
       if (item.dataset.modId === modId) {
@@ -174,7 +173,6 @@ class ModManager {
       }
     });
 
-    // Skip reloading mod info if same mod and not forced
     if (isSameMod && !forceUpdate) {
       return;
     }
@@ -203,21 +201,29 @@ class ModManager {
           } else {
             console.log("No mod info found, showing fallback");
 
+            const t = (key) => {
+              return window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+            };
             window.modInfoManager.displayModInfo({
               display_name: mod.name,
-              description: "No info.toml file found",
+              description: t("tools.modInfo.noInfoToml"),
             }, mod.folderPath);
           }
         } catch (error) {
           console.error("Error loading mod info:", error);
-          window.modInfoManager.showError("Failed to load mod information");
+          const t = (key) => {
+            return window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+          };
+          window.modInfoManager.showError(t("tools.modInfo.failedToLoad"));
         }
       } else {
         console.log("No folderPath or electronAPI, showing fallback");
-
+        const t = (key) => {
+          return window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+        };
         window.modInfoManager.displayModInfo({
           display_name: mod.name,
-          description: "No detailed information available",
+          description: t("tools.modInfo.noDetailedInfo"),
         }, null);
       }
     }
@@ -555,7 +561,8 @@ class ModManager {
     this.isCheckingConflicts = true;
 
     if (window.statusBarManager) {
-      window.statusBarManager.updateStatus("Checking for conflicts...");
+      const t = (key) => window.i18n && window.i18n.t ? window.i18n.t(key) : key;
+      window.statusBarManager.updateStatus(t("statusBar.checkingConflicts"));
     }
 
     try {
@@ -563,8 +570,15 @@ class ModManager {
       this.conflicts = result.conflicts || [];
       this.isCheckingConflicts = false;
 
-      if (window.statusBarManager && result.totalConflicts > 0) {
-        window.statusBarManager.updateConflictStatus(result.totalConflicts);
+      if (window.statusBarManager) {
+        if (result.totalConflicts > 0) {
+          window.statusBarManager.updateConflictStatus(result.totalConflicts);
+        }
+        if (window.statusBarManager.currentTab) {
+          window.statusBarManager.updateStatus(window.statusBarManager.currentTab);
+        } else {
+          window.statusBarManager.updateStatus("tools");
+        }
       }
 
       return result;
