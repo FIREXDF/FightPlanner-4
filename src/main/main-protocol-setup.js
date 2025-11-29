@@ -8,7 +8,10 @@ let mainWindow = null;
 let pendingProtocolUrl = null;
 
 console.log('[protocol] init: platform=%s, defaultApp=%s, argv=%j', process.platform, !!process.defaultApp, process.argv);
-    ProtocolHandler.registerProtocol();
+    // Register protocol (async on Linux)
+    ProtocolHandler.registerProtocol().catch(err => {
+      console.error('[protocol] Registration failed:', err);
+    });
 
 app.on('open-url', (event, url) => {
     event.preventDefault();

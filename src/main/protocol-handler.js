@@ -19,7 +19,15 @@ class ProtocolHandler {
     this.downloadInProgress = false;
     this.activeDownloads = new Map(); // Map of downloadId -> {request, file, filePath, cancelled, paused}
   }
-  static registerProtocol() {
+  static async registerProtocol() {
+    // On Linux, wait for app to be ready before registering
+    if (process.platform === "linux") {
+      const { app } = require("electron");
+      if (!app.isReady()) {
+        await app.whenReady();
+      }
+    }
+
     if (process.platform === "win32") {
       if (process.defaultApp) {
         if (process.argv.length >= 2) {
@@ -81,70 +89,97 @@ class ProtocolHandler {
         // HACK: As `electron.app.setAsDefaultProtocolClient` is based on `xdg-settings set default-url-scheme-handler` 
         // which is not supported on Xfce, we manually create new .desktop entry and use `xdg-mime` 
         // to make it default handler for protocol URLs.
+        let electronAppMainScriptPath = null;
+        let execArgs = [];
+
         if (process.defaultApp && process.argv.length >= 2) {
-          const electronAppMainScriptPath = path.resolve(process.argv[1]);
-          
-          try {
-            const electronAppDesktopFileName = `fightplanner-protocol-${crypto.createHash("md5").update(`${process.execPath}${electronAppMainScriptPath}`).digest("hex")}.desktop`;
-            const electronAppDesktopFilePath = path.resolve(
-              app.getPath("home"),
-              ".local",
-              "share",
-              "applications",
-              electronAppDesktopFileName
-            );
+          // Development mode
+          electronAppMainScriptPath = path.resolve(process.argv[1]);
+          execArgs = [electronAppMainScriptPath];
+        } else {
+          // Production mode - try to find the main script or use execPath only
+          if (process.argv.length >= 2) {
+            electronAppMainScriptPath = path.resolve(process.argv[1]);
+            execArgs = [electronAppMainScriptPath];
+          } else {
+            // No script path available, use execPath only
+            execArgs = [];
+          }
+        }
 
-            fs.mkdirSync(
-              path.dirname(electronAppDesktopFilePath),
-              {
-                recursive: true,
-              }
-            );
+        // Always create .desktop file on Linux (both dev and prod)
+        try {
+          const hashInput = electronAppMainScriptPath 
+            ? `${process.execPath}${electronAppMainScriptPath}` 
+            : `${process.execPath}`;
+          const electronAppDesktopFileName = `fightplanner-protocol-${crypto.createHash("md5").update(hashInput).digest("hex")}.desktop`;
+          const electronAppDesktopFilePath = path.resolve(
+            app.getPath("home"),
+            ".local",
+            "share",
+            "applications",
+            electronAppDesktopFileName
+          );
 
-            const desktopFileContent = [
-              `[Desktop Entry]`,
-              `Name=FightPlanner (pid: ${process.pid})`,
-              `Exec=${process.execPath} ${electronAppMainScriptPath} %u`,
-              `Type=Application`,
-              `Terminal=false`,
-              `MimeType=x-scheme-handler/fightplanner;`
-            ].join("\n");
-
-            fs.writeFileSync(
-              electronAppDesktopFilePath,
-              desktopFileContent
-            );
-
-            console.log(`[protocol][linux] Created .desktop file: ${electronAppDesktopFilePath}`);
-
-            try {
-              execSync(`xdg-mime default ${electronAppDesktopFileName} x-scheme-handler/fightplanner`);
-              console.log(`[protocol][linux] Registered with xdg-mime`);
-            } catch (xdgError) {
-              console.warn(`[protocol][linux] xdg-mime registration failed:`, xdgError.message);
+          fs.mkdirSync(
+            path.dirname(electronAppDesktopFilePath),
+            {
+              recursive: true,
             }
-          } catch (desktopError) {
-            console.warn(`[protocol][linux] Desktop file creation failed:`, desktopError.message);
+          );
+
+          // Build Exec line
+          let execLine = process.execPath;
+          if (electronAppMainScriptPath) {
+            execLine = `${process.execPath} ${electronAppMainScriptPath} %u`;
+          } else {
+            execLine = `${process.execPath} %u`;
           }
 
-          const ok = app.setAsDefaultProtocolClient(
-            "fightplanner",
-            process.execPath,
-            [electronAppMainScriptPath]
+          const desktopFileContent = [
+            `[Desktop Entry]`,
+            `Name=FightPlanner`,
+            `Exec=${execLine}`,
+            `Type=Application`,
+            `Terminal=false`,
+            `MimeType=x-scheme-handler/fightplanner;`,
+            `NoDisplay=true`
+          ].join("\n");
+
+          fs.writeFileSync(
+            electronAppDesktopFilePath,
+            desktopFileContent
           );
-          console.log(
-            `[protocol][${process.platform}] register dev returned=${ok}`
-          );
-        } else {
-          const ok = app.setAsDefaultProtocolClient(
-            "fightplanner",
-            process.execPath,
-            []
-          );
-          console.log(
-            `[protocol][${process.platform}] register prod returned=${ok}`
-          );
+
+          console.log(`[protocol][linux] Created .desktop file: ${electronAppDesktopFilePath}`);
+
+          try {
+            execSync(`xdg-mime default ${electronAppDesktopFileName} x-scheme-handler/fightplanner`);
+            console.log(`[protocol][linux] Registered with xdg-mime`);
+          } catch (xdgError) {
+            console.warn(`[protocol][linux] xdg-mime registration failed:`, xdgError.message);
+            // Try alternative method
+            try {
+              execSync(`update-desktop-database ${path.dirname(electronAppDesktopFilePath)}`);
+              console.log(`[protocol][linux] Updated desktop database`);
+            } catch (updateError) {
+              console.warn(`[protocol][linux] Desktop database update failed:`, updateError.message);
+            }
+          }
+        } catch (desktopError) {
+          console.warn(`[protocol][linux] Desktop file creation failed:`, desktopError.message);
         }
+
+        // Also try the standard Electron method as fallback
+        const ok = app.setAsDefaultProtocolClient(
+          "fightplanner",
+          process.execPath,
+          execArgs
+        );
+        console.log(
+          `[protocol][${process.platform}] register returned=${ok}`
+        );
+
         const after = app.isDefaultProtocolClient
           ? app.isDefaultProtocolClient("fightplanner")
           : undefined;
