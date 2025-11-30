@@ -11,7 +11,8 @@ const CONFLICT_WHITELIST_PATTERNS = [
   'ui_chara_db.prcx',
   'plugin.nro',
   'victory.toml',
-  'README.txt'
+  'README.txt',
+  'READ ME.txt'
 ];
 
 const TEMP_FOLDERS = [

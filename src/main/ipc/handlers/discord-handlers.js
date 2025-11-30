@@ -47,3 +47,6 @@ function registerDiscordHandlers(ipcMain, discordRPC) {
 module.exports = { registerDiscordHandlers };
 
 
+
+
+

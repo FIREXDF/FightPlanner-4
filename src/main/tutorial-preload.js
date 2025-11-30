@@ -19,7 +19,24 @@ contextBridge.exposeInMainWorld('tutorialAPI', {
     // Settings & File System
     selectFolder: () => ipcRenderer.invoke('select-folder'),
     saveSetting: (key, value) => ipcRenderer.invoke('store-set', key, value),
-    getSetting: (key) => ipcRenderer.invoke('store-get', key)
+    getSetting: (key) => ipcRenderer.invoke('store-get', key),
+    
+    // ARCropolis Installation
+    detectSdDrives: () => ipcRenderer.invoke('detect-sd-drives'),
+    detectYuzuPath: () => ipcRenderer.invoke('detect-yuzu-path'),
+    detectRyujinxPath: () => ipcRenderer.invoke('detect-ryujinx-path'),
+    getGithubRelease: (repo) => ipcRenderer.invoke('get-github-release', repo),
+    getSkylineRelease: () => ipcRenderer.invoke('get-skyline-release'),
+    downloadArcropolis: (url, targetPath) => ipcRenderer.invoke('download-arcropolis', url, targetPath),
+    extractArcropolis: (zipPath, targetDir) => ipcRenderer.invoke('extract-arcropolis', zipPath, targetDir),
+    extractSkyline: (zipPath, targetDir) => ipcRenderer.invoke('extract-skyline', zipPath, targetDir),
+    createDirectory: (dirPath) => ipcRenderer.invoke('create-directory', dirPath),
+    checkArcropolisInstalled: (targetDir) => ipcRenderer.invoke('check-arcropolis-installed', targetDir),
+    checkArcropolisFolder: (ultimatePath) => ipcRenderer.invoke('check-arcropolis-folder', ultimatePath),
+    selectDrive: () => ipcRenderer.invoke('select-drive'),
+    joinPath: (...parts) => ipcRenderer.invoke('join-path', ...parts),
+    getTempDir: () => ipcRenderer.invoke('get-temp-dir'),
+    openUrl: (url) => ipcRenderer.invoke('open-url', url)
 });
 
 console.log('tutorialAPI exposed to window');

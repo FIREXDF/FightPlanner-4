@@ -193,25 +193,27 @@
             height: 8px;
             border-radius: 4px;
             background: rgba(255, 255, 255, 0.1);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: background 0.3s ease, box-shadow 0.3s ease;
             cursor: pointer;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
         }
 
         .tutorial-progress-dot:hover {
             background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
         }
 
         .tutorial-progress-dot.active {
             width: 36px;
             background: #7a9bff;
-            box-shadow: 0 0 12px rgba(122, 155, 255, 0.3);
+            box-shadow: 0 0 20px rgba(122, 155, 255, 0.6), 0 0 10px rgba(122, 155, 255, 0.3);
         }
 
         .tutorial-progress-dot.completed {
-            background: #4caf50;
+            background: rgba(122, 155, 255, 0.6);
             width: 8px;
+            box-shadow: 0 0 8px rgba(122, 155, 255, 0.4);
         }
 
         /* Tutorial content */
@@ -375,6 +377,22 @@
         .tutorial-btn-ghost:hover {
             background: rgba(255, 255, 255, 0.1);
             transform: translateY(-1px);
+        }
+
+        /* Discord link styling */
+        a[href*="discord.gg"] {
+            color: #7a9bff !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            border-bottom: 1px solid rgba(122, 155, 255, 0.3) !important;
+            transition: all 0.2s ease !important;
+            cursor: pointer !important;
+        }
+
+        a[href*="discord.gg"]:hover {
+            color: #9ab5ff !important;
+            border-bottom-color: rgba(122, 155, 255, 0.6) !important;
+            text-shadow: 0 0 8px rgba(122, 155, 255, 0.4) !important;
         }
     </style>
 </head>

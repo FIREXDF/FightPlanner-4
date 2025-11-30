@@ -76,3 +76,6 @@ function registerProtocolHandlers(ipcMain) {
 module.exports = { registerProtocolHandlers };
 
 
+
+
+

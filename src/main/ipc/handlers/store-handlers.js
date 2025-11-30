@@ -42,3 +42,6 @@ function registerStoreHandlers(ipcMain) {
 module.exports = { registerStoreHandlers };
 
 
+
+
+
