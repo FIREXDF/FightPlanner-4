@@ -49,13 +49,13 @@ class SettingsManager {
           if (tabName === 'logs' && window.logsManager) {
             setTimeout(() => {
               window.logsManager.reinitialize();
-            }, 250);
+            }, 200);
           }
           
           if (tabName === 'customization' && window.customizationManager) {
             setTimeout(() => {
               window.customizationManager.setupEventListeners();
-            }, 250);
+            }, 200);
           }
         }
       });
@@ -360,32 +360,56 @@ class SettingsManager {
   }
 
   switchSettingsTab(tabName) {
-    document.querySelectorAll(".settings-tab-btn").forEach((btn) => {
-      btn.classList.remove("active");
-    });
-    const activeBtn = document.querySelector(
-      `[data-settings-tab="${tabName}"]`
-    );
-    if (activeBtn) {
-      activeBtn.classList.add("active");
-    }
+    const newActive = document.getElementById(`settings-${tabName}`);
+    if (!newActive) return;
 
     const currentActive = document.querySelector(
-      ".settings-tab-content.active"
+      ".settings-tab-content.active:not(.fade-out)"
     );
-    const newActive = document.getElementById(`settings-${tabName}`);
 
-    if (currentActive && newActive && currentActive !== newActive) {
+    if (this.switchTabTimeout) {
+      clearTimeout(this.switchTabTimeout);
+      this.switchTabTimeout = null;
+    }
+
+    if (currentActive && currentActive !== newActive) {
       currentActive.classList.add('fade-out');
       
-      setTimeout(() => {
-        currentActive.classList.remove("active", "fade-out");
+      this.switchTabTimeout = setTimeout(() => {
+        document.querySelectorAll(".settings-tab-content").forEach((content) => {
+          content.classList.remove("active", "fade-out");
+        });
+        
+        document.querySelectorAll(".settings-tab-btn").forEach((btn) => {
+          btn.classList.remove("active");
+        });
+        
+        const activeBtn = document.querySelector(
+          `[data-settings-tab="${tabName}"]`
+        );
+        if (activeBtn) {
+          activeBtn.classList.add("active");
+        }
+        
         newActive.classList.add("active");
-      }, 300);
-    } else if (newActive) {
+        this.switchTabTimeout = null;
+      }, 200);
+    } else {
       document.querySelectorAll(".settings-tab-content").forEach((content) => {
         content.classList.remove("active", "fade-out");
       });
+      
+      document.querySelectorAll(".settings-tab-btn").forEach((btn) => {
+        btn.classList.remove("active");
+      });
+      
+      const activeBtn = document.querySelector(
+        `[data-settings-tab="${tabName}"]`
+      );
+      if (activeBtn) {
+        activeBtn.classList.add("active");
+      }
+      
       newActive.classList.add("active");
     }
   }

@@ -28,7 +28,7 @@ class DiscordRPCClient {
 
     setTimeout(() => {
       this.updateTab('tools');
-    }, 1000);
+    }, 500);
   }
 
   updateTab(tab) {

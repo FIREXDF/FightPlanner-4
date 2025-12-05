@@ -1,0 +1,66 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+[data-theme="light"] ::selection {
+    background-color: rgba(90, 122, 223, 0.2);
+    color: var(--text-primary);
+}
+
+[data-theme="light"] .modal input::selection,
+[data-theme="light"] .modal textarea::selection,
+[data-theme="light"] .modal-input::selection,
+[data-theme="light"] .mod-info-editor-modal input::selection,
+[data-theme="light"] .mod-info-editor-modal textarea::selection,
+[data-theme="light"] .advanced-textarea::selection {
+    background-color: rgba(90, 122, 223, 0.15);
+    color: var(--text-primary);
+}
+
+body #social-onboarding {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 99999 !important;
+    overflow: visible !important;
+    clip-path: none !important;
+    transform: none !important;
+}
+
+body * {
+    box-sizing: border-box;
+}
+
+body .social-login-card,
+body .modal,
+body [class*="shadow"] {
+    overflow: visible !important;
+}
+
+.main-container {
+    display: flex;
+    flex: 1;
+    overflow: visible !important;
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    padding-left: 70px;
+}
+

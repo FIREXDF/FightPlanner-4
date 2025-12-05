@@ -1,0 +1,301 @@
+.conflict-list {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 12px 12px 12px;
+}
+
+.conflict-table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    table-layout: fixed;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.conflict-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-tertiary);
+    backdrop-filter: blur(10px);
+}
+
+[data-theme="light"] .conflict-table thead {
+    background: rgba(255, 255, 255, 0.98);
+}
+
+.conflict-table th {
+    padding: 10px 8px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 2px solid rgba(var(--accent-rgb), 0.4);
+    white-space: nowrap;
+    background: var(--bg-tertiary);
+    box-sizing: border-box;
+}
+
+[data-theme="light"] .conflict-table th {
+    background: rgba(255, 255, 255, 0.98);
+}
+
+.conflict-table th i {
+    margin-right: 8px;
+    font-size: 14px;
+    color: var(--accent-color);
+    opacity: 1;
+}
+
+.conflict-th-file {
+    width: 40%;
+    box-sizing: border-box;
+}
+
+.conflict-th-mods {
+    width: 60%;
+    box-sizing: border-box;
+}
+
+.conflict-table-row {
+    border-bottom: 1px solid var(--bg-hover);
+    transition: background-color 0.2s ease;
+}
+
+.conflict-table-row:hover {
+    background-color: var(--bg-accent-subtle);
+}
+
+.conflict-table-row:last-child {
+    border-bottom: none;
+}
+
+.conflict-td-file {
+    width: 40%;
+    padding: 10px 8px;
+    vertical-align: top;
+    word-wrap: break-word;
+    box-sizing: border-box;
+    overflow: hidden;
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 13px;
+    color: var(--text-secondary);
+    word-break: break-all;
+    overflow-wrap: break-word;
+}
+
+.conflict-td-mods {
+    width: 60%;
+    padding: 10px 8px;
+    vertical-align: top;
+    word-wrap: break-word;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.conflict-file-path-text {
+    display: inline-block;
+    max-width: 100%;
+    word-break: break-all;
+    overflow-wrap: break-word;
+}
+
+.conflict-mods-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.conflict-mod-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    padding: 4px 0;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.conflict-mod-item i {
+    font-size: 15px;
+    color: var(--warning-color);
+    flex-shrink: 0;
+}
+
+.conflict-mod-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
+}
+
+.conflict-change-slot-footer-btn {
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
+    color: var(--text-inverse);
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.conflict-change-slot-footer-btn:hover {
+    background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-color) 100%);
+    box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.25);
+    transform: translateY(-1px);
+    color: var(--text-inverse);
+}
+
+.conflict-change-slot-footer-btn i {
+    font-size: 14px;
+}
+
+.conflict-mod-select {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+}
+
+.conflict-mod-select::-webkit-scrollbar {
+    width: 8px;
+}
+
+.conflict-mod-select::-webkit-scrollbar-track {
+    background: var(--bg-hover);
+    border-radius: 4px;
+}
+
+.conflict-mod-select::-webkit-scrollbar-thumb {
+    background: rgba(var(--accent-rgb), 0.3);
+    border-radius: 4px;
+}
+
+.conflict-mod-select::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--accent-rgb), 0.5);
+}
+
+.conflict-mod-select-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg-transparent-03);
+    border: 1px solid var(--bg-hover);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.conflict-mod-select-item:hover {
+    background: var(--bg-accent-subtle);
+    border-color: rgba(var(--accent-rgb), 0.3);
+}
+
+.conflict-mod-select-item i {
+    font-size: 20px;
+    color: var(--accent-color);
+}
+
+.conflict-mod-select-item-name {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.conflict-mod-select-item-path {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.conflict-auto-slot-footer-btn {
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
+    color: var(--text-inverse);
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.conflict-auto-slot-footer-btn:hover {
+    background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-color) 100%);
+    border-color: rgba(var(--accent-rgb), 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(155, 122, 255, 0.3);
+    color: var(--text-inverse);
+}
+
+.conflict-auto-slot-footer-btn i {
+    font-size: 14px;
+}
+
+.conflict-auto-slot-mod-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+}
+
+.conflict-auto-slot-mod-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.conflict-auto-slot-mod-list::-webkit-scrollbar-track {
+    background: var(--bg-hover);
+    border-radius: 4px;
+}
+
+.conflict-auto-slot-mod-list::-webkit-scrollbar-thumb {
+    background: rgba(var(--accent-rgb), 0.3);
+    border-radius: 4px;
+}
+
+.conflict-auto-slot-mod-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--accent-rgb), 0.5);
+}
+
+.conflict-auto-slot-mod-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--bg-transparent-03);
+    border: 1px solid var(--bg-hover);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.conflict-auto-slot-mod-item:hover {
+    background: var(--bg-hover);
+    border-color: var(--bg-transparent-10);
+}
+
+.conflict-auto-slot-mod-item-stage {
+    background: rgba(155, 122, 255, 0.08);
+    border-color: rgba(155, 122, 255, 0.2);
+}
+
+.conflict-auto-slot-mod-item-stage:hover {
+    background: rgba(155, 122, 255, 0.12);
+    border-color: rgba(155, 122, 255, 0.3);
+}

@@ -18,6 +18,8 @@ class ProtocolHandler {
     this.mainWindow = mainWindow;
     this.downloadInProgress = false;
     this.activeDownloads = new Map(); // Map of downloadId -> {request, file, filePath, cancelled, paused}
+    this.pendingInstalls = new Map();
+    this.processingUrls = new Set();
   }
   static async registerProtocol() {
     // On Linux, wait for app to be ready before registering
@@ -264,14 +266,26 @@ class ProtocolHandler {
     console.log("[protocol] Handling deep link:", url);
 
     try {
-      const downloadId = `dl_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       const cleanUrl = url.replace("fightplanner:", "");
+      
+      if (this.processingUrls.has(cleanUrl)) {
+        console.log("[protocol] URL already being processed, skipping duplicate:", cleanUrl);
+        return;
+      }
+      
+      this.processingUrls.add(cleanUrl);
+      
+      setTimeout(() => {
+        this.processingUrls.delete(cleanUrl);
+      }, 5000);
 
+      const downloadId = `dl_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       const modId = this.extractModId(cleanUrl);
 
       const downloadUrl = this.parseGameBananaUrl(cleanUrl);
 
       if (!downloadUrl) {
+        this.processingUrls.delete(cleanUrl);
         this.showError("Invalid URL format");
         return;
       }
@@ -279,18 +293,17 @@ class ProtocolHandler {
       console.log("[protocol] Download URL:", downloadUrl);
       console.log("[protocol] Mod ID:", modId);
 
-      // Send confirmation request to renderer
       this.sendToRenderer("mod-install-confirm-request", {
         url: downloadUrl,
         downloadId,
         modId
       });
 
-      // Store the pending install data
-      this.pendingInstalls = this.pendingInstalls || new Map();
       this.pendingInstalls.set(downloadId, { url: downloadUrl, modId, downloadId });
     } catch (error) {
       console.error("Error handling deep link:", error);
+      const cleanUrl = url.replace("fightplanner:", "");
+      this.processingUrls.delete(cleanUrl);
       this.showError(`Installation failed: ${error.message}`);
       this.sendToRenderer("mod-install-error", { error: error.message });
     }
@@ -346,9 +359,7 @@ class ProtocolHandler {
       });
 
       // Clean up pending install
-      if (this.pendingInstalls) {
-        this.pendingInstalls.delete(downloadId);
-      }
+      this.pendingInstalls.delete(downloadId);
     } catch (error) {
       console.error("Error during installation:", error);
       this.showError(`Installation failed: ${error.message}`);
@@ -358,9 +369,7 @@ class ProtocolHandler {
       });
 
       // Clean up pending install
-      if (this.pendingInstalls) {
-        this.pendingInstalls.delete(downloadId);
-      }
+      this.pendingInstalls.delete(downloadId);
     }
   }
   extractModId(url) {
@@ -401,8 +410,22 @@ class ProtocolHandler {
         fs.mkdirSync(tempDir, { recursive: true });
       }
 
-      const fileName = `mod-${Date.now()}.zip`;
-      const filePath = path.join(tempDir, fileName);
+      let fileExt = '.zip';
+      try {
+        const urlPath = new URL(url).pathname.toLowerCase();
+        if (urlPath.endsWith('.rar')) {
+          fileExt = '.rar';
+        } else if (urlPath.endsWith('.7z')) {
+          fileExt = '.7z';
+        } else if (urlPath.endsWith('.zip')) {
+          fileExt = '.zip';
+        }
+      } catch (e) {
+        console.warn("[protocol][download] Could not detect extension from URL, using .zip");
+      }
+
+      let fileName = `mod-${Date.now()}${fileExt}`;
+      let filePath = path.join(tempDir, fileName);
 
       console.log("[protocol][download] to:", filePath);
 
@@ -450,7 +473,9 @@ class ProtocolHandler {
             response.headers.location
           );
           file.close();
-          fs.unlinkSync(filePath);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
 
           this.downloadMod(response.headers.location, downloadId)
             .then(resolve)
@@ -460,12 +485,23 @@ class ProtocolHandler {
 
         if (response.statusCode !== 200) {
           file.close();
-          fs.unlinkSync(filePath);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
 
           reject(
             new Error(`Download failed with status ${response.statusCode}`)
           );
           return;
+        }
+
+        let finalFilePath = filePath;
+        const contentType = response.headers["content-type"] || "";
+        if (contentType.includes("application/x-rar-compressed") || contentType.includes("application/vnd.rar")) {
+          if (!filePath.endsWith('.rar')) {
+            finalFilePath = filePath.replace(/\.(zip|7z)$/, '.rar');
+            console.log("[protocol][download] Content-Type indicates RAR, will rename to:", finalFilePath);
+          }
         }
 
         totalBytes = parseInt(response.headers["content-length"], 10) || 0;
@@ -503,6 +539,19 @@ class ProtocolHandler {
           }
           
           file.close(() => {
+            if (finalFilePath !== filePath && fs.existsSync(filePath)) {
+              try {
+                fs.renameSync(filePath, finalFilePath);
+                console.log("[protocol][download] renamed to:", finalFilePath);
+                filePath = finalFilePath;
+                if (downloadCheck) {
+                  downloadCheck.filePath = finalFilePath;
+                }
+              } catch (renameError) {
+                console.warn("[protocol][download] failed to rename file:", renameError.message);
+              }
+            }
+            
             console.log("[protocol][download] complete");
             this.activeDownloads.delete(downloadId);
             resolve(filePath);
@@ -528,9 +577,8 @@ class ProtocolHandler {
     });
   }
   async installMod(zipPath, downloadId) {
-    // Verify ZIP file exists
     if (!fs.existsSync(zipPath)) {
-      throw new Error(`ZIP file does not exist: ${zipPath}`);
+      throw new Error(`Archive file does not exist: ${zipPath}`);
     }
     
     const modsPath = sharedStore.get("modsPath");
@@ -555,7 +603,8 @@ class ProtocolHandler {
     }
 
     this.sendToRenderer("mod-extract-start", { downloadId });
-    await this.extractZip(zipPath, tempExtractDir);
+    const ModUtils = require("./mod-utils");
+    await ModUtils.extractArchive(zipPath, tempExtractDir);
     this.sendToRenderer("mod-extract-complete", { downloadId });
 
     await this.verifyFptStructure(tempExtractDir);
@@ -691,7 +740,7 @@ class ProtocolHandler {
     let command;
 
     if (process.platform === "win32") {
-      const bundled7z = path.join(__dirname, "../../tools/7za.exe");
+      const bundled7z = path.join(__dirname, "..", "..", "tools", "7za.exe");
 
       if (fs.existsSync(bundled7z)) {
         command = `"${bundled7z}" x "${zipPath}" -o"${targetPath}" -y`;

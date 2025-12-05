@@ -1,0 +1,30 @@
+* {
+    scroll-behavior: auto;
+}
+
+.sidebar-btn,
+.action-btn,
+.input-btn,
+.input-field,
+.settings-tab-content,
+.modal,
+.context-menu,
+.toast,
+.mod-item,
+.social-btn,
+.modal-btn,
+.settings-btn {
+    transition-duration: 0.2s !important;
+}
+
+.settings-tab-content.active,
+.settings-tab-content.fade-out {
+    animation-duration: 0.2s !important;
+}
+
+body.reduced-animations *,
+body.no-animations * {
+    animation-duration: 0.1s !important;
+    transition-duration: 0.1s !important;
+}
+

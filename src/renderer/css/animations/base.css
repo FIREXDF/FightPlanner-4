@@ -3,17 +3,11 @@
 }
 
 .sidebar-btn {
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
-
-
-* {
-    scroll-behavior: smooth;
-}
-
 
 .action-btn {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .action-btn:hover {
@@ -26,9 +20,8 @@
     transition: all 0.1s ease;
 }
 
-
 .input-btn {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .input-btn:hover {
@@ -41,9 +34,8 @@
     transition: all 0.1s ease;
 }
 
-
 .input-field {
-    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 }
 
 .input-field:focus {
@@ -51,7 +43,6 @@
     transform: scale(1.01);
 }
 
-
 .status-bar {
-    transition: background-color 0.3s ease;
+    transition: background-color 0.2s ease;
 }

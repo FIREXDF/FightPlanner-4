@@ -257,7 +257,7 @@ function initializeTabFeatures(tabName) {
       if (window.modManager) {
         window.modManager.fetchMods();
       }
-    }, 300);
+    }, 150);
 
     if (window.modManager) {
       const currentInput = document.getElementById("search-mods-input");
@@ -270,7 +270,7 @@ function initializeTabFeatures(tabName) {
           if (window.modManager) {
             window.modManager.updateVisibility();
           }
-        }, 200);
+        }, 100);
       }
     }
   }

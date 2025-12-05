@@ -16,7 +16,7 @@ class CustomizationManager {
     
     setTimeout(() => {
       this.setupEventListeners();
-    }, 500);
+    }, 200);
   }
 
   setupEventListeners() {
