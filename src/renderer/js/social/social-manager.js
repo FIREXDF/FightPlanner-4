@@ -8,6 +8,7 @@ class SocialManager {
     this.autoDownloadEnabled = true;
     this.autoDownloadIntervalMs = 5 * 60 * 1000;
     this.installingMods = new Set();
+    this.serviceUnavailableShown = false;
   }
 
   async initialize() {
@@ -273,9 +274,36 @@ class SocialManager {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const rawText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (e) {
+        this.showServiceErrorModal(
+          "modals.socialServiceUnavailable.title",
+          "modals.socialServiceUnavailable.invalidResponse"
+        );
+        throw new Error("Invalid JSON response from social API");
+      }
 
       if (!response.ok || data.error) {
+        if (
+          await this.handleServiceUnavailable(
+            data?.error?.message || JSON.stringify(data),
+            response.status
+          )
+        ) {
+          throw new Error("Service temporarily unavailable");
+        }
+
+        if (response.status === 429 || response.status === 404) {
+          this.showServiceErrorModal(
+            "modals.socialServiceUnavailable.title",
+            "modals.socialServiceUnavailable.rateLimited"
+          );
+          throw new Error(`Social service error ${response.status}`);
+        }
+
         let errorMessage = "Login failed";
 
         if (data.error) {
@@ -2316,6 +2344,16 @@ class SocialManager {
       const response = await fetch(
         `${this.API_URL}/list/links?idToken=${this.authToken}`
       );
+
+      if (!response.ok) {
+        const text = await response.text();
+        if (await this.handleServiceUnavailable(text, response.status)) {
+          return;
+        }
+        console.error("[Social] list/links request failed:", text);
+        return;
+      }
+
       const modsData = await response.json();
 
       if (!Array.isArray(modsData)) {
@@ -2414,6 +2452,23 @@ class SocialManager {
       const response = await fetch(
         `${this.API_URL}/list/links?idToken=${this.authToken}`
       );
+
+      if (!response.ok) {
+        const text = await response.text();
+        if (await this.handleServiceUnavailable(text, response.status)) {
+          return;
+        }
+        if (response.status === 429 || response.status === 404) {
+          this.showServiceErrorModal(
+            "modals.socialServiceUnavailable.title",
+            "modals.socialServiceUnavailable.rateLimited"
+          );
+          return;
+        }
+        console.error("[Social] list/links update failed:", text);
+        return;
+      }
+
       const modsData = await response.json();
 
       if (!Array.isArray(modsData)) {
@@ -2471,6 +2526,49 @@ class SocialManager {
     } catch (error) {
       console.error("[Social] Error updating modInstalled status:", error);
     }
+  }
+
+  showServiceErrorModal(titleKey, messageKey) {
+    if (window.modalManager && window.modalManager.showAlert) {
+      window.modalManager.showAlert("warning", titleKey, messageKey);
+    } else if (window.toastManager) {
+      const t = (k) => (window.i18n && window.i18n.t ? window.i18n.t(k) : k);
+      window.toastManager.warning(t(messageKey));
+    } else {
+      const t = (k) => (window.i18n && window.i18n.t ? window.i18n.t(k) : k);
+      alert(`${t(titleKey)}\n\n${t(messageKey)}`);
+    }
+  }
+
+  async handleServiceUnavailable(rawMessage, status) {
+    const msg = (rawMessage || "").toString();
+    const marker =
+      msg.includes("Please check back later") ||
+      msg.includes("Error 1027") ||
+      status === 520 ||
+      status === 527 ||
+      status === 502 ||
+      status === 503;
+
+    if (!marker) return false;
+
+    if (this.serviceUnavailableShown) return true;
+    this.serviceUnavailableShown = true;
+
+    if (window.modalManager && window.modalManager.showAlert) {
+      window.modalManager.showAlert(
+        "warning",
+        "Service temporairement indisponible",
+        "Le service social est temporairement indisponible (Error 1027). Merci de réessayer dans quelques minutes."
+      );
+    } else if (window.toastManager) {
+      window.toastManager.warning(
+        "Le service social est temporairement indisponible (Error 1027)."
+      );
+    }
+
+    this.stopAutoDownloadCheck();
+    return true;
   }
 }
 

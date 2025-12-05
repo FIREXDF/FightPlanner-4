@@ -225,23 +225,63 @@
 
             <div class="settings-section">
                 <label class="settings-label" data-i18n="settings.switchConnection">Switch Connection</label>
-                <div class="settings-input-group">
-                    <input type="text" id="switch-ip" class="settings-input" data-i18n="settings.switchIpPlaceholder"
-                        data-i18n-placeholder placeholder="192.168.1.100">
-                    <label class="settings-label" style="margin: 0 10px;">:</label>
-                    <input type="text" id="switch-port" class="settings-input"
-                        data-i18n="settings.switchPortPlaceholder" data-i18n-placeholder placeholder="5000"
-                        style="width: 100px;">
+                
+                <div class="settings-input-group" style="margin-bottom: 12px;">
+                    <label class="settings-label" style="margin-right: 12px; min-width: 150px;" data-i18n="settings.transferMethod">Transfer Method:</label>
+                    <div class="custom-select" id="switch-transfer-method-select" style="flex: 1;">
+                        <div class="custom-select-trigger">
+                            <span class="selected-value">Select method...</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                        <div class="custom-select-dropdown">
+                            <div class="custom-select-option" data-value="ftp">
+                                <span data-i18n="settings.transferMethodFtp">FTP</span>
+                            </div>
+                            <div class="custom-select-option" data-value="drive">
+                                <span data-i18n="settings.transferMethodDrive">Local Drive</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <p class="settings-hint" data-i18n="settings.switchIpPort">Switch IP address and FTP port (default:
-                    5000)</p>
+                <p class="settings-hint" data-i18n="settings.transferMethodHint">Choose how to send mods to Switch: via FTP or directly to SD card</p>
 
-                <div class="settings-input-group" style="margin-top: 12px;">
-                    <input type="text" id="switch-ftp-path" class="settings-input"
-                        data-i18n="settings.switchFtpPathPlaceholder" data-i18n-placeholder
-                        placeholder="/switch/atmosphere/contents">
+                <!-- FTP Settings -->
+                <div id="switch-ftp-settings" style="margin-top: 12px;">
+                    <div class="settings-input-group">
+                        <input type="text" id="switch-ip" class="settings-input" data-i18n="settings.switchIpPlaceholder"
+                            data-i18n-placeholder placeholder="192.168.1.100">
+                        <label class="settings-label" style="margin: 0 10px;">:</label>
+                        <input type="text" id="switch-port" class="settings-input"
+                            data-i18n="settings.switchPortPlaceholder" data-i18n-placeholder placeholder="5000"
+                            style="width: 100px;">
+                    </div>
+                    <p class="settings-hint" data-i18n="settings.switchIpPort">Switch IP address and FTP port (default:
+                        5000)</p>
+
+                    <div class="settings-input-group" style="margin-top: 12px;">
+                        <input type="text" id="switch-ftp-path" class="settings-input"
+                            data-i18n="settings.switchFtpPathPlaceholder" data-i18n-placeholder
+                            placeholder="/switch/atmosphere/contents">
+                    </div>
+                    <p class="settings-hint" data-i18n="settings.switchFtpPath">Remote path on Switch SD card for mods</p>
                 </div>
-                <p class="settings-hint" data-i18n="settings.switchFtpPath">Remote path on Switch SD card for mods</p>
+
+                <!-- Drive Settings -->
+                <div id="switch-drive-settings" style="margin-top: 12px; display: none;">
+                    <div class="settings-input-group">
+                        <label class="settings-label" style="margin-right: 12px; min-width: 150px;" data-i18n="settings.driveLetter">Drive Letter:</label>
+                        <div class="custom-select" id="switch-drive-letter-select" style="flex: 1;">
+                            <div class="custom-select-trigger">
+                                <span class="selected-value" data-i18n="settings.selectDrive">Select Drive</span>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="custom-select-dropdown" id="switch-drive-letter-options">
+                                <!-- Drive letters will be populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                    <p class="settings-hint" data-i18n="settings.driveLetterHint">Select the drive letter of your Switch SD card (e.g., E:)</p>
+                </div>
             </div>
 
             <div class="settings-section">

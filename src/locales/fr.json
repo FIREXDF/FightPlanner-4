@@ -113,6 +113,13 @@
     "launchFullscreen": "Lancer l'émulateur en plein écran",
     "launchFullscreenHint": "Quand activé, ajoute le flag -f pour lancer l'émulateur en mode plein écran",
     "switchConnection": "Connexion Switch",
+    "transferMethod": "Méthode de Transfert",
+    "transferMethodFtp": "FTP",
+    "transferMethodDrive": "Disque Local",
+    "transferMethodHint": "Choisissez comment envoyer les mods à la Switch : via FTP ou directement sur la carte SD",
+    "driveLetter": "Lettre du Disque",
+    "selectDrive": "Sélectionner un Disque",
+    "driveLetterHint": "Sélectionnez la lettre du disque de votre carte SD Switch (ex. : E:)",
     "switchIpPlaceholder": "192.168.1.100",
     "switchPortPlaceholder": "5000",
     "switchIpPort": "Adresse IP Switch et port FTP (défaut : 5000)",
@@ -263,6 +270,11 @@
       "downloadUrl": "URL de Téléchargement :",
       "hint": "Le mod sera téléchargé et automatiquement installé dans votre dossier mods.",
       "downloadInstall": "Télécharger & Installer"
+    },
+    "socialServiceUnavailable": {
+      "title": "Service social indisponible",
+      "rateLimited": "Le service social est temporairement indisponible (erreur 429/404). Merci de réessayer dans quelques minutes.",
+      "invalidResponse": "La réponse du service social est invalide ou indisponible. Merci de réessayer dans quelques minutes."
     },
     "close": "Fermer"
   },

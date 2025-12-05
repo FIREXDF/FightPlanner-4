@@ -10,6 +10,8 @@ class SettingsManager {
       switchIp: null,
       switchPort: "5000",
       switchFtpPath: null,
+      switchTransferMethod: "none",
+      switchDriveLetter: null,
       conflictDetectionEnabled: true,
       conflictWhitelistPatterns: [],
       autoCheckPluginUpdates: false,
@@ -18,6 +20,7 @@ class SettingsManager {
     };
     this.initialized = false;
     this.tabSwitchingAttached = false;
+    this.drivesLoaded = false;
     this.initSettings();
     this.initializeUI();
   }
@@ -189,6 +192,77 @@ class SettingsManager {
       switchFtpPath.dataset.listenerAttached = "true";
     }
 
+    const switchTransferMethodSelect = document.getElementById("switch-transfer-method-select");
+    if (switchTransferMethodSelect && !switchTransferMethodSelect.dataset.listenerAttached) {
+      const trigger = switchTransferMethodSelect.querySelector(".custom-select-trigger");
+      const options = switchTransferMethodSelect.querySelectorAll(".custom-select-option");
+      const selectedValue = switchTransferMethodSelect.querySelector(".selected-value");
+
+      if (trigger) {
+        trigger.addEventListener("click", (e) => {
+          e.stopPropagation();
+          switchTransferMethodSelect.classList.toggle("open");
+        });
+      }
+
+      document.addEventListener("click", (e) => {
+        if (!switchTransferMethodSelect.contains(e.target)) {
+          switchTransferMethodSelect.classList.remove("open");
+        }
+      });
+
+      options.forEach((option) => {
+        option.addEventListener("click", () => {
+          const value = option.dataset.value;
+          const text = option.querySelector("span").textContent;
+
+          if (selectedValue) {
+            selectedValue.textContent = text;
+          }
+
+          options.forEach((opt) => opt.classList.remove("active"));
+          option.classList.add("active");
+
+          switchTransferMethodSelect.classList.remove("open");
+
+          this.settings.switchTransferMethod = value;
+          this.saveSettings();
+          this.updateSwitchTransferMethodUI();
+        });
+      });
+
+      switchTransferMethodSelect.dataset.listenerAttached = "true";
+    }
+
+    const switchDriveLetterSelect = document.getElementById("switch-drive-letter-select");
+    if (switchDriveLetterSelect && !switchDriveLetterSelect.dataset.listenerAttached) {
+      const trigger = switchDriveLetterSelect.querySelector(".custom-select-trigger");
+      const optionsContainer = document.getElementById("switch-drive-letter-options");
+      const selectedValue = switchDriveLetterSelect.querySelector(".selected-value");
+
+      if (trigger) {
+        trigger.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          switchDriveLetterSelect.classList.toggle("open");
+          
+          if (switchDriveLetterSelect.classList.contains("open") && optionsContainer) {
+            if (!this.drivesLoaded) {
+              await this.loadAvailableDrives();
+              this.drivesLoaded = true;
+            }
+          }
+        });
+      }
+
+      document.addEventListener("click", (e) => {
+        if (!switchDriveLetterSelect.contains(e.target)) {
+          switchDriveLetterSelect.classList.remove("open");
+        }
+      });
+
+      switchDriveLetterSelect.dataset.listenerAttached = "true";
+    }
+
     const conflictDetectionEnabled = document.getElementById("conflict-detection-enabled");
     if (conflictDetectionEnabled && !conflictDetectionEnabled.dataset.listenerAttached) {
       conflictDetectionEnabled.addEventListener("change", () => {
@@ -355,6 +429,7 @@ class SettingsManager {
     this.updateEmulatorFullscreenUI();
     this.updateFullscreenVisibility();
     this.updateSwitchSettingsUI();
+    this.updateSwitchTransferMethodUI();
     this.updateConflictDetectionUI();
     this.updateAutoCheckPluginUpdatesUI();
   }
@@ -656,6 +731,201 @@ ${t("settings.okUnderstand")}
     }
   }
 
+  updateSwitchTransferMethodUI() {
+    const transferMethod = this.settings.switchTransferMethod || "none";
+    const transferMethodSelect = document.getElementById("switch-transfer-method-select");
+    const ftpSettings = document.getElementById("switch-ftp-settings");
+    const driveSettings = document.getElementById("switch-drive-settings");
+
+    if (transferMethodSelect) {
+      const selectedValue = transferMethodSelect.querySelector(".selected-value");
+      const options = transferMethodSelect.querySelectorAll(".custom-select-option");
+      
+      let foundOption = false;
+      options.forEach((option) => {
+        if (option.dataset.value === transferMethod) {
+          option.classList.add("active");
+          if (selectedValue) {
+            selectedValue.textContent = option.querySelector("span").textContent;
+          }
+          foundOption = true;
+        } else {
+          option.classList.remove("active");
+        }
+      });
+      
+      if (!foundOption && selectedValue && transferMethod === "none") {
+        selectedValue.textContent = "Select method...";
+      }
+    }
+
+    if (ftpSettings) {
+      ftpSettings.style.display = transferMethod === "ftp" ? "block" : "none";
+    }
+    if (driveSettings) {
+      driveSettings.style.display = transferMethod === "drive" ? "block" : "none";
+    }
+
+    if (transferMethod === "drive") {
+      this.loadAvailableDrives().then(() => {
+        this.updateSwitchDriveLetterUI();
+      });
+    }
+  }
+
+  async loadAvailableDrives(forceReload = false) {
+    if (!window.electronAPI || !window.electronAPI.getAvailableDrives) {
+      console.error("Electron API not available");
+      return;
+    }
+
+    const optionsContainer = document.getElementById("switch-drive-letter-options");
+    const selectedValue = document.querySelector("#switch-drive-letter-select .selected-value");
+    
+    if (!optionsContainer) return;
+
+    if (forceReload || !this.drivesLoaded) {
+      optionsContainer.innerHTML = '<div class="custom-select-option" style="pointer-events: none; opacity: 0.6;"><span><i class="bi bi-arrow-clockwise" style="animation: spin 1s linear infinite;"></i> Searching for drives...</span></div>';
+      if (selectedValue && forceReload) {
+        const currentText = selectedValue.textContent;
+        if (!currentText.includes("Searching")) {
+          selectedValue.textContent = "Searching for drives...";
+        }
+      }
+    }
+
+    try {
+      const result = await window.electronAPI.getAvailableDrives();
+      if (result.success && result.drives) {
+        optionsContainer.innerHTML = "";
+
+        if (result.drives.length === 0) {
+          optionsContainer.innerHTML = '<div class="custom-select-option" style="pointer-events: none; opacity: 0.6;"><span>No drives found</span></div>';
+          if (selectedValue && forceReload) {
+            selectedValue.textContent = "No drives found";
+          }
+          this.drivesLoaded = true;
+          return;
+        }
+
+        result.drives.forEach((drive) => {
+          const option = document.createElement("div");
+          option.className = "custom-select-option";
+          option.dataset.value = drive.letter;
+          if (drive.path) {
+            option.dataset.path = drive.path;
+          }
+          
+          let displayText;
+          if (drive.path && drive.path.includes(':\\')) {
+            displayText = `${drive.letter}: (${drive.label || 'Unknown'})`;
+          } else if (drive.path && drive.path.startsWith('/')) {
+            displayText = `${drive.path} (${drive.label || 'Unknown'})`;
+          } else {
+            displayText = `${drive.letter} (${drive.label || 'Unknown'})`;
+          }
+          
+          option.innerHTML = `<span>${displayText}</span>`;
+          
+          option.addEventListener("click", () => {
+            const selectedValue = document.querySelector("#switch-drive-letter-select .selected-value");
+            if (selectedValue) {
+              selectedValue.textContent = displayText;
+            }
+
+            optionsContainer.querySelectorAll(".custom-select-option").forEach((opt) => {
+              opt.classList.remove("active");
+            });
+            option.classList.add("active");
+
+            document.getElementById("switch-drive-letter-select").classList.remove("open");
+
+            if (drive.path && drive.path.startsWith('/')) {
+              this.settings.switchDriveLetter = drive.path;
+            } else {
+              this.settings.switchDriveLetter = drive.letter;
+            }
+            this.saveSettings();
+          });
+
+          optionsContainer.appendChild(option);
+        });
+
+        const refreshBtn = document.createElement("div");
+        refreshBtn.className = "custom-select-option";
+        refreshBtn.style.cssText = "border-top: 1px solid var(--border-color); margin-top: 4px; padding-top: 8px; cursor: pointer;";
+        refreshBtn.innerHTML = '<span><i class="bi bi-arrow-clockwise"></i> Refresh drives</span>';
+        refreshBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          this.drivesLoaded = false;
+          await this.loadAvailableDrives(true);
+          this.drivesLoaded = true;
+        });
+        optionsContainer.appendChild(refreshBtn);
+
+        this.updateSwitchDriveLetterUI();
+        this.drivesLoaded = true;
+      } else {
+        optionsContainer.innerHTML = '<div class="custom-select-option" style="pointer-events: none; opacity: 0.6;"><span>Failed to load drives</span></div>';
+        if (selectedValue && forceReload) {
+          selectedValue.textContent = "Failed to load drives";
+        }
+        this.drivesLoaded = true;
+      }
+    } catch (error) {
+      console.error("Failed to load drives:", error);
+      if (optionsContainer) {
+        optionsContainer.innerHTML = '<div class="custom-select-option" style="pointer-events: none; opacity: 0.6;"><span>Error loading drives</span></div>';
+      }
+      if (selectedValue && forceReload) {
+        selectedValue.textContent = "Error loading drives";
+      }
+      this.drivesLoaded = true;
+    }
+  }
+
+  updateSwitchDriveLetterUI() {
+    const driveIdentifier = this.settings.switchDriveLetter;
+    if (!driveIdentifier) return;
+
+    const driveLetterSelect = document.getElementById("switch-drive-letter-select");
+    if (driveLetterSelect) {
+      const selectedValue = driveLetterSelect.querySelector(".selected-value");
+      const optionsContainer = document.getElementById("switch-drive-letter-options");
+      
+      if (optionsContainer) {
+        const options = optionsContainer.querySelectorAll(".custom-select-option");
+        
+        options.forEach((option) => {
+          const optionValue = option.dataset.value;
+          const optionPath = option.dataset.path;
+          let matches = false;
+          
+          if (driveIdentifier.includes(':\\') || driveIdentifier.startsWith('/')) {
+            matches = optionPath === driveIdentifier;
+          } else {
+            matches = optionValue === driveIdentifier;
+          }
+          
+          if (matches) {
+            option.classList.add("active");
+            if (selectedValue) {
+              selectedValue.textContent = option.querySelector("span").textContent;
+            }
+          } else {
+            option.classList.remove("active");
+          }
+        });
+      } else if (selectedValue) {
+        if (driveIdentifier.includes(':\\') || driveIdentifier.startsWith('/')) {
+          selectedValue.textContent = driveIdentifier;
+        } else {
+          selectedValue.textContent = `${driveIdentifier}:`;
+        }
+      }
+    }
+  }
+
   updateConflictDetectionUI() {
     const conflictDetectionCheckbox = document.getElementById("conflict-detection-enabled");
     if (conflictDetectionCheckbox) {
@@ -715,6 +985,8 @@ ${t("settings.okUnderstand")}
       const switchIp = await window.electronAPI.store.get("switchIp");
       const switchPort = await window.electronAPI.store.get("switchPort");
       const switchFtpPath = await window.electronAPI.store.get("switchFtpPath");
+      const switchTransferMethod = await window.electronAPI.store.get("switchTransferMethod");
+      const switchDriveLetter = await window.electronAPI.store.get("switchDriveLetter");
       const conflictDetectionEnabled = await window.electronAPI.store.get("conflictDetectionEnabled");
       const autoCheckPluginUpdates = await window.electronAPI.store.get("autoCheckPluginUpdates");
       const pluginUpdateIntroShown = await window.electronAPI.store.get("pluginUpdateIntroShown");
@@ -729,6 +1001,8 @@ ${t("settings.okUnderstand")}
         switchIp: switchIp || null,
         switchPort: switchPort || "5000",
         switchFtpPath: switchFtpPath || null,
+        switchTransferMethod: switchTransferMethod || "none",
+        switchDriveLetter: switchDriveLetter || null,
         conflictDetectionEnabled: conflictDetectionEnabled !== false,
         autoCheckPluginUpdates: autoCheckPluginUpdates || false,
         pluginUpdateIntroShown: pluginUpdateIntroShown || false,
@@ -746,6 +1020,8 @@ ${t("settings.okUnderstand")}
         switchIp: null,
         switchPort: "5000",
         switchFtpPath: null,
+        switchTransferMethod: "none",
+        switchDriveLetter: null,
         conflictDetectionEnabled: true,
         autoCheckPluginUpdates: false,
         pluginUpdateIntroShown: false,
@@ -768,6 +1044,8 @@ ${t("settings.okUnderstand")}
       await window.electronAPI.store.set("switchIp", this.settings.switchIp);
       await window.electronAPI.store.set("switchPort", this.settings.switchPort);
       await window.electronAPI.store.set("switchFtpPath", this.settings.switchFtpPath);
+      await window.electronAPI.store.set("switchTransferMethod", this.settings.switchTransferMethod);
+      await window.electronAPI.store.set("switchDriveLetter", this.settings.switchDriveLetter);
       await window.electronAPI.store.set("conflictDetectionEnabled", this.settings.conflictDetectionEnabled);
       await window.electronAPI.store.set("autoCheckPluginUpdates", this.settings.autoCheckPluginUpdates);
       await window.electronAPI.store.set("pluginUpdateIntroShown", this.settings.pluginUpdateIntroShown);
@@ -779,7 +1057,6 @@ ${t("settings.okUnderstand")}
 
   async setSetting(key, value) {
     this.settings[key] = value;
-    // If specific UI update logic is needed, handle it here or rely on refresh
     if (key === 'autoCheckPluginUpdates') {
       this.updateAutoCheckPluginUpdatesUI();
     }
@@ -835,7 +1112,22 @@ ${t("settings.okUnderstand")}
   }
 
   hasSwitchConfig() {
+    const method = this.settings.switchTransferMethod || "none";
+    if (method === "none") {
+      return false;
+    }
+    if (method === "drive") {
+      return !!this.settings.switchDriveLetter;
+    }
     return !!(this.settings.switchIp && this.settings.switchPort);
+  }
+
+  getSwitchTransferMethod() {
+    return this.settings.switchTransferMethod || "none";
+  }
+
+  getSwitchDriveLetter() {
+    return this.settings.switchDriveLetter || null;
   }
 
   async setAnimationPreference(preference) {

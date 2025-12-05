@@ -135,4 +135,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   onStartIntroAnimation: (callback) =>
     ipcRenderer.on("start-intro-animation", (event, data) => callback(data)),
+
+  getAvailableDrives: () => ipcRenderer.invoke("get-available-drives"),
 });

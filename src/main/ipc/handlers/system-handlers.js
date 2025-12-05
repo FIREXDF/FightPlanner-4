@@ -187,6 +187,17 @@ function registerSystemHandlers(ipcMain) {
       return createErrorResponse(ErrorCodes.LOCALE_LOAD_ERROR, error.message);
     }
   });
+
+  ipcMain.handle('get-available-drives', async () => {
+    try {
+      const { detectDrives } = require('../../utils/drive-detector');
+      const drives = await detectDrives();
+      return { success: true, drives };
+    } catch (error) {
+      handleError(error, 'get-available-drives');
+      return createErrorResponse(ErrorCodes.UNKNOWN_ERROR, error.message);
+    }
+  });
 }
 
 module.exports = { registerSystemHandlers };

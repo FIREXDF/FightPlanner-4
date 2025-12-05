@@ -113,6 +113,13 @@
     "launchFullscreen": "Launch emulator in fullscreen",
     "launchFullscreenHint": "When enabled, adds the -f flag to launch the emulator in fullscreen mode",
     "switchConnection": "Switch Connection",
+    "transferMethod": "Transfer Method",
+    "transferMethodFtp": "FTP",
+    "transferMethodDrive": "Local Drive",
+    "transferMethodHint": "Choose how to send mods to Switch: via FTP or directly to SD card",
+    "driveLetter": "Drive Letter",
+    "selectDrive": "Select Drive",
+    "driveLetterHint": "Select the drive letter of your Switch SD card (e.g., E:)",
     "switchIpPlaceholder": "192.168.1.100",
     "switchPortPlaceholder": "5000",
     "switchIpPort": "Switch IP address and FTP port (default: 5000)",
@@ -263,6 +270,11 @@
       "downloadUrl": "Download URL:",
       "hint": "The mod will be downloaded and automatically installed to your mods folder.",
       "downloadInstall": "Download & Install"
+    },
+    "socialServiceUnavailable": {
+      "title": "Social service unavailable",
+      "rateLimited": "The social service is temporarily unavailable (429/404). Please try again in a few minutes.",
+      "invalidResponse": "The social service response is invalid or unavailable. Please try again in a few minutes."
     },
     "close": "Close"
   },
