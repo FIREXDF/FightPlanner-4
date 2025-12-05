@@ -166,27 +166,9 @@ ${actionButtonHtml}
 
   hide(toast) {
     if (!toast || !toast.parentElement) return;
-
-    const toastRect = toast.getBoundingClientRect();
-    const nextToast = toast.nextElementSibling;
-    const toastMargin = parseInt(window.getComputedStyle(toast).marginBottom) || 12;
-    const totalHeight = toastRect.height + toastMargin;
-
+    
     toast.classList.remove("toast-show");
     toast.classList.add("toast-hide");
-
-    const allToasts = Array.from(this.container.children);
-    const toastIndex = allToasts.indexOf(toast);
-    
-    for (let i = toastIndex + 1; i < allToasts.length; i++) {
-      const nextToast = allToasts[i];
-      if (nextToast && !nextToast.classList.contains("toast-hide") && nextToast.classList.contains("toast-show")) {
-        const currentTranslateY = this.getTranslateY(nextToast);
-        const newTranslateY = currentTranslateY - totalHeight;
-        nextToast.style.transform = `translateX(0) translateY(${newTranslateY}px)`;
-        nextToast.style.transition = "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
-      }
-    }
 
     setTimeout(() => {
       if (toast.parentElement) {
@@ -197,25 +179,7 @@ ${actionButtonHtml}
       if (index > -1) {
         this.toasts.splice(index, 1);
       }
-
-      const remainingToasts = Array.from(this.container.children);
-      remainingToasts.forEach((t) => {
-        if (t.classList.contains("toast-show")) {
-          t.style.transform = "";
-          t.style.transition = "";
-        }
-      });
-    }, 300);
-  }
-
-  getTranslateY(element) {
-    const style = window.getComputedStyle(element);
-    const transform = style.transform;
-    if (transform && transform !== 'none') {
-      const matrix = new DOMMatrix(transform);
-      return matrix.m42;
-    }
-    return 0;
+    }, 320);
   }
 
   success(message, duration, params, options) {

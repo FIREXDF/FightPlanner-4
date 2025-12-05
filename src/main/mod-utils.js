@@ -738,13 +738,19 @@ class ModUtils {
     static async extract7Zip(archivePath, targetPath) {
         let command;
 
-        if (process.platform === "win32") {
-            const bundled7z = path.join(__dirname, "../../tools/7za.exe");
+        const candidate7zPaths = [
+            path.join(__dirname, "../../tools/7za.exe"),
+            process.resourcesPath ? path.join(process.resourcesPath, "tools", "7za.exe") : null,
+            process.resourcesPath ? path.join(process.resourcesPath, "..", "app.asar.unpacked", "tools", "7za.exe") : null
+        ].filter(Boolean);
 
-            if (fs.existsSync(bundled7z)) {
-                command = `"${bundled7z}" x "${archivePath}" -o"${targetPath}" -y`;
+        const existing7z = candidate7zPaths.find(p => fs.existsSync(p));
+
+        if (process.platform === "win32") {
+            if (existing7z) {
+                command = `"${existing7z}" x "${archivePath}" -o"${targetPath}" -y`;
             } else {
-                command = `7z x "${archivePath}" -o"${targetPath}" -y`;
+                throw new Error("7za.exe not found. Please place 7za.exe in the tools folder or install 7-Zip in PATH.");
             }
         } else {
             command = `7z x "${archivePath}" -o"${targetPath}" -y`;

@@ -33,6 +33,16 @@
     "appId": "com.shatteredchaos.fightplanner",
     "productName": "FightPlanner",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "extraResources": [
+      {
+        "from": "tools",
+        "to": "tools",
+        "filter": [
+          "7za.exe",
+          "7z.dll"
+        ]
+      }
+    ],
     "protocols": [
       {
         "name": "FightPlanner Protocol",
