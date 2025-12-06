@@ -9,6 +9,91 @@ class SocialManager {
     this.autoDownloadIntervalMs = 5 * 60 * 1000;
     this.installingMods = new Set();
     this.serviceUnavailableShown = false;
+    
+    // Cache pour réduire les requêtes
+    this.cache = {
+      links: { data: null, timestamp: 0, ttl: 2 * 60 * 1000 }, // 2 minutes
+      friends: { data: null, timestamp: 0, ttl: 2 * 60 * 1000 }, // 2 minutes
+      notifications: { data: null, timestamp: 0, ttl: 1 * 60 * 1000 } // 1 minute
+    };
+    this.pendingRequests = new Map(); // Éviter les requêtes simultanées
+  }
+  
+  // Vérifier si le cache est valide
+  isCacheValid(key) {
+    const cached = this.cache[key];
+    if (!cached || !cached.data) return false;
+    return Date.now() - cached.timestamp < cached.ttl;
+  }
+  
+  // Obtenir les données du cache
+  getCached(key) {
+    if (this.isCacheValid(key)) {
+      return this.cache[key].data;
+    }
+    return null;
+  }
+  
+  // Mettre à jour le cache
+  setCache(key, data) {
+    if (this.cache[key]) {
+      this.cache[key].data = data;
+      this.cache[key].timestamp = Date.now();
+    }
+  }
+  
+  // Invalider le cache
+  invalidateCache(key = null) {
+    if (key) {
+      if (this.cache[key]) {
+        this.cache[key].data = null;
+        this.cache[key].timestamp = 0;
+      }
+    } else {
+      // Invalider tout le cache
+      Object.keys(this.cache).forEach(k => {
+        this.cache[k].data = null;
+        this.cache[k].timestamp = 0;
+      });
+    }
+    console.log('[Social] Cache invalidated:', key || 'all');
+  }
+  
+  // Faire une requête avec cache et évitement de doublons
+  async fetchWithCache(url, options = {}, cacheKey = null) {
+    // Vérifier le cache d'abord
+    if (cacheKey && this.isCacheValid(cacheKey)) {
+      console.log('[Social] Using cached data for:', cacheKey);
+      return this.getCached(cacheKey);
+    }
+    
+    // Éviter les requêtes simultanées identiques
+    if (this.pendingRequests.has(url)) {
+      console.log('[Social] Request already pending, waiting...');
+      return await this.pendingRequests.get(url);
+    }
+    
+    // Créer la promesse
+    const requestPromise = fetch(url, options)
+      .then(async (response) => {
+        const data = await response.json();
+        
+        // Mettre en cache si cacheKey fourni
+        if (cacheKey && response.ok) {
+          this.setCache(cacheKey, data);
+        }
+        
+        return data;
+      })
+      .finally(() => {
+        // Nettoyer la requête en attente
+        this.pendingRequests.delete(url);
+      });
+    
+    // Stocker la promesse
+    this.pendingRequests.set(url, requestPromise);
+    
+    return await requestPromise;
   }
 
   async initialize() {
@@ -838,15 +923,19 @@ class SocialManager {
       '<div class="social-loading"><i class="bi bi-hourglass-split"></i><p>Loading mods...</p></div>';
 
     try {
-      const response = await fetch(
-        `${this.API_URL}/list/links?idToken=${this.authToken}`
+      const modsData = await this.fetchWithCache(
+        `${this.API_URL}/list/links?idToken=${this.authToken}`,
+        {},
+        'links'
       );
-      const modsData = await response.json();
+      
+      // Handle both array and paginated response
+      const mods = Array.isArray(modsData) ? modsData : (modsData.documents || []);
 
-      if (Array.isArray(modsData) && modsData.length > 0) {
+      if (Array.isArray(mods) && mods.length > 0) {
         feedContent.innerHTML =
           '<div class="social-mods-grid">' +
-          modsData.map((mod) => this.renderModCard(mod)).join("") +
+          mods.map((mod) => this.renderModCard(mod)).join("") +
           "</div>";
 
         setTimeout(() => {
@@ -884,13 +973,17 @@ class SocialManager {
       const usernameEl = document.getElementById("social-profile-username");
       const username = usernameEl ? usernameEl.textContent : null;
 
-      const response = await fetch(
-        `${this.API_URL}/list/links?idToken=${this.authToken}`
+      const modsData = await this.fetchWithCache(
+        `${this.API_URL}/list/links?idToken=${this.authToken}`,
+        {},
+        'links'
       );
-      const modsData = await response.json();
+      
+      // Handle both array and paginated response
+      const mods = Array.isArray(modsData) ? modsData : (modsData.documents || []);
 
-      if (Array.isArray(modsData)) {
-        const myMods = modsData.filter((mod) => {
+      if (Array.isArray(mods)) {
+        const myMods = mods.filter((mod) => {
           const modUserId = mod.userId;
           const modPseudo = mod.pseudo;
           return modUserId === userId || (username && modPseudo === username);
@@ -949,12 +1042,15 @@ class SocialManager {
     }
 
     try {
-      const response = await fetch(`${this.API_URL}/links-friends`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken: this.authToken }),
-      });
-      const data = await response.json();
+      const data = await this.fetchWithCache(
+        `${this.API_URL}/links-friends`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken: this.authToken }),
+        },
+        'friends'
+      );
 
       if (data.friends && Array.isArray(data.friends)) {
         const currentUserId = this.userData?.localId;
@@ -1250,26 +1346,33 @@ class SocialManager {
       const usernameEl = document.getElementById("social-profile-username");
       const username = usernameEl ? usernameEl.textContent : null;
 
-      const modsResponse = await fetch(
-        `${this.API_URL}/list/links?idToken=${this.authToken}`
+      const modsData = await this.fetchWithCache(
+        `${this.API_URL}/list/links?idToken=${this.authToken}`,
+        {},
+        'links'
       );
-      const modsData = await modsResponse.json();
+      
+      // Handle both array and paginated response
+      const mods = Array.isArray(modsData) ? modsData : (modsData.documents || []);
 
       let modsCount = 0;
-      if (Array.isArray(modsData)) {
-        modsCount = modsData.filter((mod) => {
+      if (Array.isArray(mods)) {
+        modsCount = mods.filter((mod) => {
           const modUserId = mod.userId;
           const modPseudo = mod.pseudo;
           return modUserId === userId || (username && modPseudo === username);
         }).length;
       }
 
-      const friendsResponse = await fetch(`${this.API_URL}/links-friends`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken: this.authToken }),
-      });
-      const friendsData = await friendsResponse.json();
+      const friendsData = await this.fetchWithCache(
+        `${this.API_URL}/links-friends`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken: this.authToken }),
+        },
+        'friends'
+      );
 
       let friendsCount = 0;
       if (friendsData.friends && Array.isArray(friendsData.friends)) {
@@ -1421,12 +1524,17 @@ class SocialManager {
             btn.disabled = true;
 
             try {
-              const response = await fetch(
-                `${this.API_URL}/list/links?idToken=${this.authToken}`
+              const modsData = await this.fetchWithCache(
+                `${this.API_URL}/list/links?idToken=${this.authToken}`,
+                {},
+                'links'
               );
-              const modsData = await response.json();
-              if (Array.isArray(modsData)) {
-                const userMod = modsData.find(
+              
+              // Handle both array and paginated response
+              const mods = Array.isArray(modsData) ? modsData : (modsData.documents || []);
+              
+              if (Array.isArray(mods)) {
+                const userMod = mods.find(
                   (mod) => (mod.pseudo || mod.creator) === username
                 );
                 if (userMod && userMod.userId) {
@@ -1530,12 +1638,15 @@ class SocialManager {
     }
 
     try {
-      const response = await fetch(`${this.API_URL}/links-friends`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken: this.authToken }),
-      });
-      const data = await response.json();
+      const data = await this.fetchWithCache(
+        `${this.API_URL}/links-friends`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken: this.authToken }),
+        },
+        'friends'
+      );
 
       if (data.friends && Array.isArray(data.friends)) {
         const currentUserId = this.userData.localId;
@@ -1984,13 +2095,17 @@ class SocialManager {
     if (!userModsContent || !this.authToken) return;
 
     try {
-      const response = await fetch(
-        `${this.API_URL}/list/links?idToken=${this.authToken}`
+      const modsData = await this.fetchWithCache(
+        `${this.API_URL}/list/links?idToken=${this.authToken}`,
+        {},
+        'links'
       );
-      const modsData = await response.json();
+      
+      // Handle both array and paginated response
+      const mods = Array.isArray(modsData) ? modsData : (modsData.documents || []);
 
-      if (Array.isArray(modsData)) {
-        const userMods = modsData.filter((mod) => {
+      if (Array.isArray(mods)) {
+        const userMods = mods.filter((mod) => {
           const modUserId = mod.userId;
           const modPseudo = mod.pseudo;
           return (
@@ -2341,27 +2456,29 @@ class SocialManager {
       const usernameEl = document.getElementById("social-profile-username");
       const username = usernameEl ? usernameEl.textContent : null;
 
-      const response = await fetch(
-        `${this.API_URL}/list/links?idToken=${this.authToken}`
+      const modsData = await this.fetchWithCache(
+        `${this.API_URL}/list/links?idToken=${this.authToken}`,
+        {},
+        'links'
       );
 
-      if (!response.ok) {
-        const text = await response.text();
-        if (await this.handleServiceUnavailable(text, response.status)) {
+      if (!modsData || (modsData.error && modsData.error.message)) {
+        if (await this.handleServiceUnavailable(JSON.stringify(modsData), modsData.status || 500)) {
           return;
         }
-        console.error("[Social] list/links request failed:", text);
+        console.error("[Social] list/links request failed:", modsData);
         return;
       }
+      
+      // Handle both array and paginated response
+      const mods = Array.isArray(modsData) ? modsData : (modsData.documents || []);
 
-      const modsData = await response.json();
-
-      if (!Array.isArray(modsData)) {
+      if (!Array.isArray(mods)) {
         console.error("[Social] Invalid mods data received");
         return;
       }
 
-      const uninstalledMods = modsData.filter((mod) => {
+      const uninstalledMods = mods.filter((mod) => {
         const modUserId = mod.userId;
         const modPseudo = mod.pseudo;
         const isOwner =

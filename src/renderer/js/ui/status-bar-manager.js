@@ -196,17 +196,22 @@ class StatusBarManager {
           const userId = window.socialManager.userData.localId;
 
           try {
-            const response = await fetch(
-              `${window.socialManager.API_URL}/list/links?idToken=${window.socialManager.authToken}`
+            // OPTIMIZATION: Utiliser le cache du socialManager
+            const modsData = await window.socialManager.fetchWithCache(
+              `${window.socialManager.API_URL}/list/links?idToken=${window.socialManager.authToken}`,
+              {},
+              'links'
             );
-            const modsData = await response.json();
+            
+            // Handle both array and paginated response
+            const mods = Array.isArray(modsData) ? modsData : (modsData.documents || []);
 
-            if (Array.isArray(modsData)) {
+            if (Array.isArray(mods)) {
               const usernameEl = document.getElementById(
                 "social-profile-username"
               );
               const username = usernameEl ? usernameEl.textContent : null;
-              const myMods = modsData.filter((mod) => {
+              const myMods = mods.filter((mod) => {
                 const modUserId = mod.userId;
                 const modPseudo = mod.pseudo;
                 return (
@@ -214,7 +219,7 @@ class StatusBarManager {
                 );
               });
 
-              const friendsResponse = await fetch(
+              const friendsData = await window.socialManager.fetchWithCache(
                 `${window.socialManager.API_URL}/links-friends`,
                 {
                   method: "POST",
@@ -222,9 +227,9 @@ class StatusBarManager {
                   body: JSON.stringify({
                     idToken: window.socialManager.authToken,
                   }),
-                }
+                },
+                'friends'
               );
-              const friendsData = await friendsResponse.json();
 
               let friendsCount = 0;
               if (friendsData.friends && Array.isArray(friendsData.friends)) {
@@ -255,7 +260,8 @@ class StatusBarManager {
 
     await updateStatus();
 
-    this.updateInterval = setInterval(updateStatus, 30000);
+    // OPTIMIZATION: Réduire la fréquence des requêtes (30s -> 3 min)
+    this.updateInterval = setInterval(updateStatus, 3 * 60 * 1000);
   }
 
   updateDownloadsStatus(statusText) {
